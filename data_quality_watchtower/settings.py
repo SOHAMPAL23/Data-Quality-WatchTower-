@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'crispy_forms',
     'crispy_bootstrap5',
-    'data_quality_watchtower',
     'apps.datasets',
     'apps.rules',
     'apps.incidents',
@@ -47,6 +46,7 @@ INSTALLED_APPS = [
     'apps.api',
     'apps.audit',
     'apps.users',
+    'apps.notifications',  # Add this line
     'django_celery_beat',
 ]
 
@@ -78,6 +78,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.notifications.context_processors.notifications_processor',  # Add this line
             ],
         },
     },
@@ -100,6 +101,16 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# Auto-run migrations on startup
+import os
+if os.environ.get('RUN_MAIN') != 'true' and not os.environ.get('MIGRATIONS_ALREADY_RUN'):
+    try:
+        from django.core.management import execute_from_command_line
+        execute_from_command_line(['manage.py', 'migrate'])
+        os.environ['MIGRATIONS_ALREADY_RUN'] = 'true'
+    except Exception:
+        pass  # Migration might fail in some environments, that's okay
 
 
 # Password validation
@@ -214,3 +225,8 @@ LOGGING = {
         },
     },
 }
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
+DEFAULT_FROM_EMAIL = 'noreply@dataqualitywatchtower.com'
+SITE_URL = 'http://localhost:8000'  # Change this in production
