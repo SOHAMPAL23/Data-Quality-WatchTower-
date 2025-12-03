@@ -9,6 +9,7 @@ class Incident(models.Model):
         ('LOW', 'Low'),
         ('MEDIUM', 'Medium'),
         ('HIGH', 'High'),
+        ('CRITICAL', 'Critical'),
     ]
     
     STATUS_CHOICES = [

@@ -23,6 +23,7 @@ class Dataset(models.Model):
     # Stats
     row_count = models.IntegerField(default=0)
     column_count = models.IntegerField(default=0)
+    quality_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Overall quality score (0-100)")
     sample_stats = models.JSONField(blank=True, null=True, help_text="Sample statistics for the dataset")
     schema = models.JSONField(blank=True, null=True, help_text="Dataset schema information")
     # Graph data

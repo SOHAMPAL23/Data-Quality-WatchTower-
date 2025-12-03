@@ -13,6 +13,10 @@ def public_home(request):
     """Public home page that doesn't require authentication"""
     return render(request, 'public_home.html')
 
+def enhanced_dashboard(request):
+    """Enhanced dashboard with modern UI and dynamic charts"""
+    return render(request, 'dashboard/home_enhanced.html')
+
 
 @login_required
 def dashboard_home(request):

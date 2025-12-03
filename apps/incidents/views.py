@@ -3,9 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.utils import timezone
 from .models import Incident, IncidentComment
 from .forms import IncidentUpdateForm, IncidentCommentForm
 from django.contrib.auth.models import User
+from apps.audit.utils import log_incident_update
 
 
 @login_required
@@ -48,6 +50,13 @@ def incident_list(request):
 def incident_detail(request, pk):
     incident = get_object_or_404(Incident, pk=pk)
     
+    # Capture the state before update for audit logging
+    before_state = {
+        'status': incident.status,
+        'severity': incident.severity,
+        'assigned_to': incident.assigned_to.username if incident.assigned_to else None
+    }
+    
     # Get comments
     comments = incident.comments.all()
     
@@ -55,7 +64,33 @@ def incident_detail(request, pk):
         if 'update_incident' in request.POST:
             form = IncidentUpdateForm(request.POST, instance=incident)
             if form.is_valid():
-                form.save()
+                old_status = incident.status
+                incident = form.save(commit=False)
+                
+                # Handle status changes
+                if old_status != incident.status:
+                    if incident.status == 'RESOLVED' and not incident.resolved_at:
+                        incident.resolved_at = timezone.now()
+                    elif incident.status == 'ACKNOWLEDGED' and not incident.acknowledged_at:
+                        incident.acknowledged_at = timezone.now()
+                
+                incident.save()
+                
+                # Log incident update activity
+                after_state = {
+                    'status': incident.status,
+                    'severity': incident.severity,
+                    'assigned_to': incident.assigned_to.username if incident.assigned_to else None
+                }
+                
+                log_incident_update(
+                    user=request.user,
+                    incident=incident,
+                    before_state=before_state,
+                    after_state=after_state,
+                    ip_address=request.META.get('REMOTE_ADDR')
+                )
+                
                 messages.success(request, 'Incident updated successfully!')
                 return redirect('incidents:incident_detail', pk=incident.pk)
         elif 'add_comment' in request.POST:
@@ -89,12 +124,34 @@ def incident_bulk_update(request):
         if incident_ids:
             incidents = Incident.objects.filter(id__in=incident_ids)
             
-            if status:
-                incidents.update(status=status)
-            
-            if assigned_to_id:
-                assigned_to = User.objects.get(id=assigned_to_id)
-                incidents.update(assigned_to=assigned_to)
+            # Log updates for each incident
+            for incident in incidents:
+                before_state = {
+                    'status': incident.status,
+                    'assigned_to': incident.assigned_to.username if incident.assigned_to else None
+                }
+                
+                if status:
+                    incident.status = status
+                
+                if assigned_to_id:
+                    assigned_to = User.objects.get(id=assigned_to_id)
+                    incident.assigned_to = assigned_to
+                
+                incident.save()
+                
+                after_state = {
+                    'status': incident.status,
+                    'assigned_to': incident.assigned_to.username if incident.assigned_to else None
+                }
+                
+                log_incident_update(
+                    user=request.user,
+                    incident=incident,
+                    before_state=before_state,
+                    after_state=after_state,
+                    ip_address=request.META.get('REMOTE_ADDR')
+                )
             
             messages.success(request, f'Updated {incidents.count()} incidents.')
         else:

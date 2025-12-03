@@ -10,6 +10,7 @@ from .forms import DatasetForm
 from .utils import analyze_dataset_for_rules
 from apps.rules.models import Rule, RuleRun
 from apps.incidents.models import Incident
+from apps.audit.utils import log_dataset_upload
 import pandas as pd
 import json
 import uuid
@@ -48,6 +49,9 @@ def dataset_create(request):
             
             # Save the dataset first to ensure file is properly handled
             dataset.save()
+            
+            # Log dataset upload activity
+            log_dataset_upload(request.user, dataset, request.META.get('REMOTE_ADDR'))
             
             # Process CSV file if provided
             if dataset.source_type == 'CSV' and dataset.file:
@@ -201,166 +205,39 @@ def dataset_detail(request, pk):
             'rule_pass_rates': rule_pass_rates
         }
         
-        print(f"Sending fresh data for dataset {dataset.id}: {response_data}")  # Debug log
         return JsonResponse(response_data)
     
-    # Get dataset preview for CSV files
-    preview_data = None
-    if dataset.source_type == 'CSV' and dataset.file:
-        try:
-            # Try multiple encodings to handle different file types
-            encodings = ['utf-8', 'latin1', 'cp1252']
-            df = None
-            for encoding in encodings:
-                try:
-                    df = pd.read_csv(dataset.file.path, encoding=encoding)
-                    break
-                except UnicodeDecodeError:
-                    continue
-            
-            if df is not None:
-                preview_data = {
-                    'columns': df.columns.tolist(),
-                    'data': df.head(10).to_dict('records')
-                }
-            else:
-                messages.error(request, 'Unable to read CSV file with supported encodings')
-        except Exception as e:
-            messages.error(request, f'Error loading dataset preview: {str(e)}')
+    # Get related rules and incidents for display
+    rules = Rule.objects.filter(dataset=dataset)
+    incidents = Incident.objects.filter(dataset=dataset).order_by('-created_at')
     
-    # Get quality metrics for the dataset
-    quality_metrics = _get_dataset_quality_metrics(dataset)
-    
-    # Get rule execution history for this dataset
-    rule_runs = RuleRun.objects.filter(rule__dataset=dataset).select_related('rule').order_by('-started_at')[:10]
-    
-    # Get incidents for this dataset
-    incidents = Incident.objects.filter(dataset=dataset).order_by('-created_at')[:5]
-    
-    # Get quality trend data from dataset
-    quality_trend_data = dataset.quality_trend_data or []
+    # Get rule runs for chart data
+    rule_runs = RuleRun.objects.filter(dataset=dataset).order_by('-started_at')[:10]
     
     context = {
         'dataset': dataset,
-        'preview_data': preview_data,
-        'quality_metrics': quality_metrics,
-        'rule_runs': rule_runs,
+        'rules': rules,
         'incidents': incidents,
-        'quality_trend_data': json.dumps(quality_trend_data),
+        'rule_runs': rule_runs,
     }
     
-    print(f"Rendering dataset detail page for dataset {dataset.id}")  # Debug log
     return render(request, 'datasets/detail.html', context)
 
 
 def _get_dataset_quality_metrics(dataset):
-    """
-    Calculate quality metrics for a dataset based on rule runs
-    """
-    # Get all rule runs for this dataset
-    rule_runs = RuleRun.objects.filter(rule__dataset=dataset)
+    """Helper function to get dataset quality metrics"""
+    total_rules = Rule.objects.filter(dataset=dataset).count()
+    passed_rules = RuleRun.objects.filter(dataset=dataset, status='SUCCESS').count()
     
-    total_runs = rule_runs.count()
-    print(f"Dataset {dataset.id} has {total_runs} rule runs")  # Debug log
+    # Calculate pass rate
+    pass_rate = (passed_rules / total_rules * 100) if total_rules > 0 else 100
     
-    if total_runs == 0:
-        # If no rule runs exist, return default values
-        default_metrics = {
-            'overall_quality_score': 0,
-            'passed_runs': 0,
-            'failed_runs': 0,
-            'total_violations': 0,
-            'latest_run_date': None,
-            'rules_executed': 0,
-        }
-        print(f"Dataset {dataset.id} has no rule runs, returning default metrics: {default_metrics}")  # Debug log
-        return default_metrics
-    
-    passed_runs = rule_runs.filter(failed_count=0).count()
-    failed_runs = total_runs - passed_runs
-    
-    # Calculate total violations
-    total_violations = sum(run.failed_count for run in rule_runs)
-    
-    # Calculate overall quality score (percentage of passed runs)
-    quality_score = (passed_runs / total_runs) * 100 if total_runs > 0 else 0
-    
-    # Get latest run date
-    latest_run = rule_runs.order_by('-started_at').first()
-    latest_run_date = latest_run.started_at if latest_run else None
-    
-    # Get number of rules executed
-    rules_executed = rule_runs.values('rule').distinct().count()
-    
-    metrics = {
-        'overall_quality_score': round(quality_score, 2),
-        'passed_runs': passed_runs,
-        'failed_runs': failed_runs,
-        'total_violations': total_violations,
-        'latest_run_date': latest_run_date,
-        'rules_executed': rules_executed,
+    return {
+        'total_rules': total_rules,
+        'passed_rules': passed_rules,
+        'pass_rate': round(pass_rate, 2),
+        'quality_score': float(dataset.quality_score) if dataset.quality_score else 0
     }
-    
-    print(f"Dataset {dataset.id} metrics: {metrics}")  # Debug log
-    return metrics
-
-
-@login_required
-def dataset_edit(request, pk):
-    dataset = get_object_or_404(Dataset, pk=pk, owner=request.user)
-    
-    if request.method == 'POST':
-        form = DatasetForm(request.POST, request.FILES, instance=dataset)
-        if form.is_valid():
-            dataset = form.save()
-            
-            # Re-process CSV file if a new one was uploaded
-            if dataset.source_type == 'CSV' and dataset.file:
-                try:
-                    # Try multiple encodings to handle different file types
-                    encodings = ['utf-8', 'latin1', 'cp1252']
-                    df = None
-                    for encoding in encodings:
-                        try:
-                            df = pd.read_csv(dataset.file.path, encoding=encoding)
-                            break
-                        except UnicodeDecodeError:
-                            continue
-                    
-                    if df is None:
-                        raise Exception('Unable to read CSV file with supported encodings')
-                    
-                    dataset.row_count = len(df)
-                    dataset.column_count = len(df.columns)
-                    dataset.schema = {col: str(dtype) for col, dtype in df.dtypes.items()}
-                    
-                    # Handle special float values that can't be serialized to JSON
-                    from numpy import nan, inf
-                    cleaned_data = []
-                    for row in df.head().to_dict('records'):
-                        cleaned_row = {}
-                        for k, v in row.items():
-                            if pd.isna(v):
-                                cleaned_row[k] = None
-                            elif isinstance(v, float) and (v == float('inf') or v == float('-inf')):
-                                cleaned_row[k] = str(v)
-                            else:
-                                cleaned_row[k] = v
-                        cleaned_data.append(cleaned_row)
-                    
-                    dataset.sample_stats = cleaned_data
-                    
-                    # Save dataset with updated fields
-                    dataset.save(update_fields=['row_count', 'column_count', 'schema', 'sample_stats'])
-                except Exception as e:
-                    messages.error(request, f'Error processing CSV file: {str(e)}')
-            
-            messages.success(request, f'Dataset "{dataset.name}" updated successfully!')
-            return redirect('datasets:dataset_detail', pk=dataset.pk)
-    else:
-        form = DatasetForm(instance=dataset)
-    
-    return render(request, 'datasets/edit.html', {'form': form, 'dataset': dataset})
 
 
 @login_required
