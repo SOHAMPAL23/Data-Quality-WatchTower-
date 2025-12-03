@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Dataset - {{ dataset.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Delete Dataset</h1>
+            <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Datasets
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h5>
+            </div>
+            <div class="card-body">
+                <p class="lead">Are you sure you want to delete the dataset <strong>"{{ dataset.name }}"</strong>?</p>
+                
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-info-circle"></i> Important Notice</h6>
+                    <p>This action will permanently delete:</p>
+                    <ul>
+                        <li>The dataset "{{ dataset.name }}"</li>
+                        <li>All rules associated with this dataset</li>
+                        <li>All incidents related to this dataset</li>
+                        <li>All historical data and statistics for this dataset</li>
+                    </ul>
+                    <p><strong>This action cannot be undone.</strong></p>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt"></i> Yes, Delete Dataset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

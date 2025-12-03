@@ -1,0 +1,1117 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Data Quality Watchtower{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Dark mode styles */
+.dark-mode {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-card: #0f3460;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --border-color: rgba(255, 255, 255, 0.1);
+}
+
+.light-mode {
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Dashboard specific styles */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.theme-toggle {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.filters-section {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: end;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.stat-cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: 0.5s;
+}
+
+.stat-card:hover::before {
+    left: 100%;
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    transition: all 1s ease;
+}
+
+.stat-label {
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.stat-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.stat-tooltip {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.chart-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.chart-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.chart-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    font-style: italic;
+    position: relative;
+}
+
+.chart-description:hover {
+    color: var(--text-primary);
+}
+
+.chart-insight {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    font-weight: 500;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.chart-container {
+    height: 300px;
+    position: relative;
+}
+
+.legend-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+/* Tooltip styles */
+[data-title]:hover:after {
+    content: attr(data-title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+/* Count-up animation */
+.count-up {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.5s forwards;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .stat-cards-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="dashboard-header">
+        <h1>Data Quality Dashboard</h1>
+        <div class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i> Dark Mode
+        </div>
+    </div>
+    
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <h5><i class="fas fa-filter"></i> Filter Data</h5>
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="dateRange" class="form-label">Date Range</label>
+                <select class="form-select" id="dateRange">
+                    <option value="7">Last 7 Days</option>
+                    <option value="30" selected>Last 30 Days</option>
+                    <option value="90">Last 90 Days</option>
+                    <option value="365">Last Year</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="datasetType" class="form-label">Dataset Type</label>
+                <select class="form-select" id="datasetType">
+                    <option value="">All Types</option>
+                    <option value="sales">Sales Data</option>
+                    <option value="customer">Customer Data</option>
+                    <option value="product">Product Data</option>
+                    <option value="financial">Financial Data</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="userFilter" class="form-label">User</label>
+                <select class="form-select" id="userFilter">
+                    <option value="">All Users</option>
+                    <option value="admin">Admin</option>
+                    <option value="analyst">Analyst</option>
+                    <option value="engineer">Data Engineer</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <button class="btn btn-primary" id="applyFilters">
+                    <i class="fas fa-sync"></i> Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="stat-cards-container">
+        <div class="stat-card">
+            <div class="stat-icon text-primary">
+                <i class="fas fa-database"></i>
+            </div>
+            <div class="stat-value count-up" id="datasetsCount">0</div>
+            <div class="stat-label">Datasets Uploaded</div>
+            <div class="stat-description" id="datasetsDescription">Total active datasets in the system</div>
+            <div class="stat-tooltip" id="datasetsTooltip" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); display: none;"></div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon text-success">
+                <i class="fas fa-list"></i>
+            </div>
+            <div class="stat-value count-up" id="rulesCount">0</div>
+            <div class="stat-label">Rules Created</div>
+            <div class="stat-description" id="rulesDescription">Active data quality rules</div>
+            <div class="stat-tooltip" id="rulesTooltip" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); display: none;"></div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon text-warning">
+                <i class="fas fa-history"></i>
+            </div>
+            <div class="stat-value count-up" id="rulesExecutedCount">0</div>
+            <div class="stat-label">Rules Executed</div>
+            <div class="stat-description" id="executedDescription">Total rule executions</div>
+            <div class="stat-tooltip" id="executedTooltip" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); display: none;"></div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon text-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-value count-up" id="incidentsCount">0</div>
+            <div class="stat-label">Incidents Raised</div>
+            <div class="stat-description" id="incidentsDescription">Open data quality incidents</div>
+            <div class="stat-tooltip" id="incidentsTooltip" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); display: none;"></div>
+        </div>
+    </div>
+    
+    <!-- Charts Grid -->
+    <div class="chart-grid">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5 class="chart-title">Success vs Failure Trends</h5>
+                <div class="chart-actions">
+                    <button class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chart-description" id="trendDescription">Daily rule execution trends over time</div>
+            <div class="chart-insight" id="trendInsight" style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 500;"></div>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+            <div class="legend-container">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #28a745;"></div>
+                    <span>Passed Rules</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #dc3545;"></div>
+                    <span>Failed Rules</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #007bff;"></div>
+                    <span>Total Rows Processed</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5 class="chart-title">Dataset Quality Distribution</h5>
+                <div class="chart-actions">
+                    <button class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chart-description" id="qualityDescription">Dataset quality scores categorized by excellence level</div>
+            <div class="chart-insight" id="qualityInsight" style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 500;"></div>
+            <div class="chart-container">
+                <canvas id="qualityChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5 class="chart-title">Rule Execution Status</h5>
+                <div class="chart-actions">
+                    <button class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chart-description" id="executionDescription">Rule execution success/failure rates with detailed breakdown</div>
+            <div class="chart-insight" id="executionInsight" style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 500;"></div>
+            <div class="chart-container">
+                <canvas id="executionChart"></canvas>
+            </div>
+            <div class="legend-container" id="executionLegend">
+                <!-- Will be populated dynamically -->
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5 class="chart-title">Incident Severity Distribution</h5>
+                <div class="chart-actions">
+                    <button class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chart-description" id="incidentDescription">Incident distribution by severity level with business impact descriptions</div>
+            <div class="chart-insight" id="incidentInsight" style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 500;"></div>
+            <div class="chart-container">
+                <canvas id="incidentChart"></canvas>
+            </div>
+            <div class="legend-container" id="incidentLegend">
+                <!-- Will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Theme toggle functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
+    
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    body.classList.add(savedTheme + '-mode');
+    updateThemeToggleIcon(savedTheme);
+    
+    themeToggle.addEventListener('click', function() {
+        const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        body.classList.remove(currentTheme + '-mode');
+        body.classList.add(newTheme + '-mode');
+        
+        localStorage.setItem('theme', newTheme);
+        updateThemeToggleIcon(newTheme);
+    });
+    
+    function updateThemeToggleIcon(theme) {
+        const icon = themeToggle.querySelector('i');
+        if (theme === 'dark') {
+            icon.className = 'fas fa-moon';
+            themeToggle.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+        } else {
+            icon.className = 'fas fa-sun';
+            themeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+        }
+    }
+    
+    // Initialize charts
+    initializeCharts();
+    
+    // Load dashboard data
+    loadDashboardData();
+    
+    // Apply filters
+    document.getElementById('applyFilters').addEventListener('click', function() {
+        loadDashboardData();
+    });
+});
+
+// Chart instances
+let trendChart, qualityChart, executionChart, incidentChart;
+
+function initializeCharts() {
+    // Trend Chart
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    trendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Passed Rules',
+                data: [],
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y'
+            }, {
+                label: 'Failed Rules',
+                data: [],
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y'
+            }, {
+                label: 'Total Rows Processed',
+                data: [],
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Rule Executions'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                    title: {
+                        display: true,
+                        text: 'Rows Processed'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Quality Chart
+    const qualityCtx = document.getElementById('qualityChart').getContext('2d');
+    qualityChart = new Chart(qualityCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Quality Score (%)',
+                data: [],
+                backgroundColor: [],
+                borderColor: [],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const datasetIndex = context.datasetIndex;
+                            const index = context.dataIndex;
+                            const dataset = context.dataset;
+                            const value = dataset.data[index];
+                            const label = context.chart.data.labels[index];
+                            return `${label}: ${value}%`;
+                        },
+                        afterLabel: function(context) {
+                            const index = context.dataIndex;
+                            // We'll populate this with additional info later
+                            return '';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Quality Score (%)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Datasets'
+                    }
+                }
+            }
+        }
+    });
+    
+    // Execution Chart
+    const executionCtx = document.getElementById('executionChart').getContext('2d');
+    executionChart = new Chart(executionCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                backgroundColor: [],
+                borderColor: [],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const dataset = context.dataset;
+                            const total = dataset.data.reduce((a, b) => a + b, 0);
+                            const value = dataset.data[context.dataIndex];
+                            const percentage = Math.round((value / total) * 100);
+                            return `${context.label}: ${value} (${percentage}%)`;
+                        },
+                        afterLabel: function(context) {
+                            const index = context.dataIndex;
+                            // We'll populate this with descriptions later
+                            return '';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Incident Chart
+    const incidentCtx = document.getElementById('incidentChart').getContext('2d');
+    incidentChart = new Chart(incidentCtx, {
+        type: 'pie',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                backgroundColor: [],
+                borderColor: [],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const dataset = context.dataset;
+                            const total = dataset.data.reduce((a, b) => a + b, 0);
+                            const value = dataset.data[context.dataIndex];
+                            const percentage = Math.round((value / total) * 100);
+                            return `${context.label}: ${value} (${percentage}%)`;
+                        },
+                        afterLabel: function(context) {
+                            const index = context.dataIndex;
+                            // We'll populate this with descriptions later
+                            return '';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function loadDashboardData() {
+    // Show loading state
+    showLoadingState();
+    
+    // Get filter values
+    const days = document.getElementById('dateRange').value;
+    
+    // Fetch data from API
+    fetch(`/api/dashboard/enhanced-stats/?days=${days}`)
+        .then(response => response.json())
+        .then(data => {
+            updateDashboard(data);
+        })
+        .catch(error => {
+            console.error('Error loading dashboard data:', error);
+            // Use mock data for demo purposes
+            const mockData = generateMockData();
+            updateDashboard(mockData);
+        });
+}
+
+function showLoadingState() {
+    // Show loading indicators on stat cards
+    document.querySelectorAll('.stat-value').forEach(el => {
+        el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    });
+    
+    // Show loading on descriptions
+    document.querySelectorAll('.stat-description').forEach(el => {
+        el.textContent = 'Loading...';
+    });
+    
+    document.querySelectorAll('.chart-description').forEach(el => {
+        el.textContent = 'Loading chart data...';
+    });
+}
+
+function updateDashboard(data) {
+    // Update stats with count-up animation
+    animateValue('datasetsCount', 0, data.stats.datasets.count, 1000);
+    animateValue('rulesCount', 0, data.stats.rules.count, 1000);
+    animateValue('rulesExecutedCount', 0, data.stats.executed.count, 1000);
+    animateValue('incidentsCount', 0, data.stats.incidents.count, 1000);
+    
+    // Update stat descriptions
+    document.getElementById('datasetsDescription').textContent = data.stats.datasets.description;
+    document.getElementById('rulesDescription').textContent = data.stats.rules.description;
+    document.getElementById('executedDescription').textContent = data.stats.executed.description;
+    document.getElementById('incidentsDescription').textContent = data.stats.incidents.description;
+    
+    // Update tooltips if available
+    if (data.stats.datasets.tooltip) {
+        document.getElementById('datasetsTooltip').textContent = data.stats.datasets.tooltip;
+        document.getElementById('datasetsTooltip').style.display = 'block';
+    }
+    if (data.stats.rules.tooltip) {
+        document.getElementById('rulesTooltip').textContent = data.stats.rules.tooltip;
+        document.getElementById('rulesTooltip').style.display = 'block';
+    }
+    if (data.stats.executed.tooltip) {
+        document.getElementById('executedTooltip').textContent = data.stats.executed.tooltip;
+        document.getElementById('executedTooltip').style.display = 'block';
+    }
+    if (data.stats.incidents.tooltip) {
+        document.getElementById('incidentsTooltip').textContent = data.stats.incidents.tooltip;
+        document.getElementById('incidentsTooltip').style.display = 'block';
+    }
+    
+    // Update charts
+    updateTrendChart(data.trends);
+    updateQualityChart(data.quality);
+    updateExecutionChart(data.execution);
+    updateIncidentChart(data.incidents);
+}
+
+function animateValue(elementId, start, end, duration) {
+    const element = document.getElementById(elementId);
+    const range = end - start;
+    const increment = end > start ? 1 : -1;
+    const stepTime = Math.abs(Math.floor(duration / range));
+    const startTime = new Date().getTime();
+    
+    const timer = setInterval(function() {
+        const now = new Date().getTime();
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const value = Math.floor(progress * range + start);
+        
+        element.textContent = value.toLocaleString();
+        
+        if (progress === 1) {
+            clearInterval(timer);
+        }
+    }, stepTime || 10);
+}
+
+function updateTrendChart(data) {
+    trendChart.data.labels = data.labels;
+    trendChart.data.datasets[0].data = data.passed;
+    trendChart.data.datasets[1].data = data.failed;
+    trendChart.data.datasets[2].data = data.total_rows;
+    trendChart.update();
+    
+    // Update description and insight
+    document.getElementById('trendDescription').textContent = data.description;
+    if (data.insight) {
+        document.getElementById('trendInsight').textContent = data.insight;
+    }
+    
+    // Update tooltip if available
+    if (data.tooltip) {
+        document.getElementById('trendDescription').setAttribute('title', data.tooltip);
+        // Add hover effect for tooltip
+        document.getElementById('trendDescription').style.cursor = 'help';
+        document.getElementById('trendDescription').style.borderBottom = '1px dotted var(--text-secondary)';
+    }
+}
+
+function updateQualityChart(data) {
+    const labels = data.distribution.map(item => item.dataset);
+    const scores = data.distribution.map(item => item.quality_score);
+    const backgroundColors = data.distribution.map(item => item.color);
+    const borderColors = data.distribution.map(item => item.color.replace('0.7', '1'));
+    
+    qualityChart.data.labels = labels;
+    qualityChart.data.datasets[0].data = scores;
+    qualityChart.data.datasets[0].backgroundColor = backgroundColors;
+    qualityChart.data.datasets[0].borderColor = borderColors;
+    qualityChart.update();
+    
+    // Update description and insight
+    document.getElementById('qualityDescription').textContent = data.description;
+    if (data.insight) {
+        document.getElementById('qualityInsight').textContent = data.insight;
+    }
+    
+    // Update tooltip if available
+    if (data.tooltip) {
+        document.getElementById('qualityDescription').setAttribute('title', data.tooltip);
+        // Add hover effect for tooltip
+        document.getElementById('qualityDescription').style.cursor = 'help';
+        document.getElementById('qualityDescription').style.borderBottom = '1px dotted var(--text-secondary)';
+    }
+    
+    // Add tooltip callbacks for more detailed information
+    qualityChart.options.plugins.tooltip.callbacks = {
+        label: function(context) {
+            const datasetIndex = context.datasetIndex;
+            const index = context.dataIndex;
+            const dataset = context.dataset;
+            const value = dataset.data[index];
+            const label = context.chart.data.labels[index];
+            const item = data.distribution[index];
+            return [
+                `${label}: ${value}%`,
+                `Category: ${item.category}`,
+                `Rows: ${item.rows.toLocaleString()}`
+            ];
+        }
+    };
+    qualityChart.update();
+}
+
+function updateExecutionChart(data) {
+    const labels = Object.keys(data.details);
+    const values = labels.map(key => data.details[key].count);
+    const backgroundColors = ['#28a745', '#dc3545', '#007bff']; // Success, Failure, In Progress
+    const borderColors = ['#1e7e34', '#c82333', '#0056b3'];
+    const descriptions = labels.map(key => data.details[key].description);
+    
+    executionChart.data.labels = labels.map(label => label.charAt(0).toUpperCase() + label.slice(1));
+    executionChart.data.datasets[0].data = values;
+    executionChart.data.datasets[0].backgroundColor = backgroundColors;
+    executionChart.data.datasets[0].borderColor = borderColors;
+    executionChart.update();
+    
+    // Update description and insight
+    document.getElementById('executionDescription').textContent = data.description;
+    if (data.insight) {
+        document.getElementById('executionInsight').textContent = data.insight;
+    }
+    
+    // Update tooltip if available
+    if (data.tooltip) {
+        document.getElementById('executionDescription').setAttribute('title', data.tooltip);
+        // Add hover effect for tooltip
+        document.getElementById('executionDescription').style.cursor = 'help';
+        document.getElementById('executionDescription').style.borderBottom = '1px dotted var(--text-secondary)';
+    }
+    
+    // Update legend with descriptions
+    const legendContainer = document.getElementById('executionLegend');
+    legendContainer.innerHTML = '';
+    
+    labels.forEach((label, index) => {
+        const capitalizedLabel = label.charAt(0).toUpperCase() + label.slice(1);
+        const description = descriptions[index];
+        const percentage = data.details[label].percentage;
+        
+        const legendItem = document.createElement('div');
+        legendItem.className = 'legend-item';
+        legendItem.innerHTML = `
+            <div class="legend-color" style="background-color: ${backgroundColors[index]};"></div>
+            <div>
+                <div><strong>${capitalizedLabel}</strong>: ${values[index]} (${percentage}%)</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">${description}</div>
+            </div>
+        `;
+        legendContainer.appendChild(legendItem);
+    });
+    
+    // Add tooltip callbacks for more detailed information
+    executionChart.options.plugins.tooltip.callbacks = {
+        label: function(context) {
+            const dataset = context.dataset;
+            const total = dataset.data.reduce((a, b) => a + b, 0);
+            const value = dataset.data[context.dataIndex];
+            const percentage = Math.round((value / total) * 100);
+            const label = context.label;
+            const detail = data.details[label.toLowerCase()];
+            return [
+                `${label}: ${value} (${percentage}%)`,
+                detail.description
+            ];
+        }
+    };
+    executionChart.update();
+}
+
+function updateIncidentChart(data) {
+    const labels = data.severity_data.map(item => item.severity);
+    const values = data.severity_data.map(item => item.count);
+    const backgroundColors = ['#dc3545', '#ffc107', '#007bff', '#28a745']; // Critical, High, Medium, Low
+    const borderColors = ['#c82333', '#e0a800', '#0056b3', '#1e7e34'];
+    const descriptions = data.severity_data.map(item => item.description);
+    
+    incidentChart.data.labels = labels;
+    incidentChart.data.datasets[0].data = values;
+    incidentChart.data.datasets[0].backgroundColor = backgroundColors;
+    incidentChart.data.datasets[0].borderColor = borderColors;
+    incidentChart.update();
+    
+    // Update description and insight
+    document.getElementById('incidentDescription').textContent = data.description;
+    if (data.insight) {
+        document.getElementById('incidentInsight').textContent = data.insight;
+    }
+    
+    // Update tooltip if available
+    if (data.tooltip) {
+        document.getElementById('incidentDescription').setAttribute('title', data.tooltip);
+        // Add hover effect for tooltip
+        document.getElementById('incidentDescription').style.cursor = 'help';
+        document.getElementById('incidentDescription').style.borderBottom = '1px dotted var(--text-secondary)';
+    }
+    
+    // Update legend with descriptions
+    const legendContainer = document.getElementById('incidentLegend');
+    legendContainer.innerHTML = '';
+    
+    data.severity_data.forEach((item, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'legend-item';
+        legendItem.innerHTML = `
+            <div class="legend-color" style="background-color: ${backgroundColors[index]};"></div>
+            <div>
+                <div><strong>${item.severity}</strong>: ${item.count} (${item.percentage}%)</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">${item.description}</div>
+            </div>
+        `;
+        legendContainer.appendChild(legendItem);
+    });
+    
+    // Add tooltip callbacks for more detailed information
+    incidentChart.options.plugins.tooltip.callbacks = {
+        label: function(context) {
+            const dataset = context.dataset;
+            const total = dataset.data.reduce((a, b) => a + b, 0);
+            const value = dataset.data[context.dataIndex];
+            const percentage = Math.round((value / total) * 100);
+            const item = data.severity_data[context.dataIndex];
+            return [
+                `${item.severity}: ${value} (${percentage}%)`,
+                item.description
+            ];
+        }
+    };
+    incidentChart.update();
+}
+
+// Generate mock data for demonstration
+function generateMockData() {
+    const days = 30;
+    const labels = [];
+    const passed = [];
+    const failed = [];
+    const totalRows = [];
+    
+    // Generate trend data
+    for (let i = days; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        labels.push(date.toISOString().split('T')[0]);
+        
+        const basePassed = 800 + Math.random() * 200;
+        const baseFailed = 50 + Math.random() * 100;
+        const baseRows = (basePassed + baseFailed) * 100;
+        
+        passed.push(Math.round(basePassed));
+        failed.push(Math.round(baseFailed));
+        totalRows.push(Math.round(baseRows));
+    }
+    
+    return {
+        stats: {
+            datasets: {
+                count: 24,
+                description: "Total active datasets in the system"
+            },
+            rules: {
+                count: 42,
+                description: "Active data quality rules"
+            },
+            executed: {
+                count: 128,
+                description: "Total rule executions"
+            },
+            incidents: {
+                count: 17,
+                description: "Open data quality incidents"
+            }
+        },
+        trends: {
+            labels: labels,
+            passed: passed,
+            failed: failed,
+            total_rows: totalRows,
+            description: "Daily rule execution trends over the last 30 days"
+        },
+        quality: {
+            distribution: [
+                { dataset: "Customer Data", quality_score: 95, category: "Excellent", color: "#28a745", rows: 12500 },
+                { dataset: "Sales Records", quality_score: 87, category: "Good", color: "#ffc107", rows: 8900 },
+                { dataset: "Product Catalog", quality_score: 76, category: "Fair", color: "#fd7e14", rows: 5400 },
+                { dataset: "Financial Reports", quality_score: 68, category: "Fair", color: "#fd7e14", rows: 3200 },
+                { dataset: "Inventory Data", quality_score: 45, category: "Poor", color: "#dc3545", rows: 7800 }
+            ],
+            description: "Dataset quality scores categorized by excellence level"
+        },
+        execution: {
+            details: {
+                success: {
+                    count: 112,
+                    percentage: 87.5,
+                    description: "Rules executed without failures"
+                },
+                failure: {
+                    count: 16,
+                    percentage: 12.5,
+                    description: "Rules with validation failures"
+                },
+                inProgress: {
+                    count: 0,
+                    percentage: 0,
+                    description: "Currently executing rules"
+                }
+            },
+            description: "Rule execution success/failure rates with detailed breakdown"
+        },
+        incidents: {
+            severity_data: [
+                { severity: "CRITICAL", count: 3, description: "Immediate attention required - system impact", percentage: 17.6 },
+                { severity: "HIGH", count: 7, description: "High priority - business impact", percentage: 41.2 },
+                { severity: "MEDIUM", count: 4, description: "Medium priority - moderate impact", percentage: 23.5 },
+                { severity: "LOW", count: 3, description: "Low priority - minor issues", percentage: 17.6 }
+            ],
+            description: "Incident distribution by severity level with business impact descriptions"
+        }
+    };
+}
+</script>
+{% endblock %}

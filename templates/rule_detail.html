@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}Rule Details - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Rule Details</h1>
+                <div>
+                    <a href="{% url 'rules:rule_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Rules
+                    </a>
+                    <a href="{% url 'rules:edit_rule' rule.id %}" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> Edit Rule
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card glass-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> {{ rule.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Dataset:</strong> {{ rule.dataset.name }}</p>
+                            <p><strong>Rule Type:</strong> {{ rule.get_rule_type_display }}</p>
+                            <p><strong>Severity:</strong> 
+                                <span class="badge bg-{% if rule.severity == 'LOW' %}secondary{% elif rule.severity == 'MEDIUM' %}warning{% elif rule.severity == 'HIGH' %}danger{% else %}critical{% endif %}">
+                                    {{ rule.get_severity_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Status:</strong> 
+                                {% if rule.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Created:</strong> {{ rule.created_at|date:"M d, Y H:i" }}</p>
+                            <p><strong>Last Updated:</strong> {{ rule.updated_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <p><strong>DSL Expression:</strong></p>
+                            <pre><code>{{ rule.dsl_expression }}</code></pre>
+                        </div>
+                    </div>
+                    
+                    {% if rule.rule_type == 'RANGE' %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <p><strong>Range Values:</strong></p>
+                            <p>Min: {{ rule.range_min|default:"None" }} | Max: {{ rule.range_max|default:"None" }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if rule.rule_type == 'FK' %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <p><strong>Foreign Key Reference:</strong></p>
+                            <p>Table: {{ rule.fk_table }} | Column: {{ rule.fk_column }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if rule.webhook_url %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <p><strong>Webhook URL:</strong></p>
+                            <p><a href="{{ rule.webhook_url }}" target="_blank">{{ rule.webhook_url }}</a></p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card glass-card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-cogs"></i> Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'rules:run_rule' rule.id %}" class="btn btn-success">
+                            <i class="fas fa-play"></i> Run Rule Now
+                        </a>
+                        <a href="{% url 'rules:toggle_rule_status' rule.id %}" class="btn btn-{% if rule.is_active %}warning{% else %}success{% endif %}">
+                            <i class="fas fa-{% if rule.is_active %}pause{% else %}play{% endif %}"></i> 
+                            {% if rule.is_active %}Deactivate{% else %}Activate{% endif %} Rule
+                        </a>
+                        <a href="{% url 'rules:delete_rule' rule.id %}" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Delete Rule
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card glass-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Recent Runs</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_runs %}
+                    <div class="list-group">
+                        {% for run in recent_runs %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>{{ run.started_at|date:"M d, Y H:i" }}</strong>
+                                <span class="badge bg-{% if run.status == 'COMPLETED' %}success{% elif run.status == 'FAILED' %}danger{% else %}secondary{% endif %}">
+                                    {{ run.get_status_display }}
+                                </span>
+                            </div>
+                            <div class="mt-2">
+                                <small>
+                                    Passed: {{ run.passed_rows }} | Failed: {{ run.failed_rows }} | Total: {{ run.total_rows }}
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No recent runs for this rule.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

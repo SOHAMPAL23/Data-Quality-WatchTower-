@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ rule.name }} - Data Quality Watchtower{% endblock %}
+
+{% block page_title %}Rule: {{ rule.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card glassmorphic-card animated fadeInUp">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-list-check"></i> {{ rule.name }}</h5>
+                <div>
+                    <a href="{% url 'rules:rule_edit' rule.pk %}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'rules:rule_run' rule.pk %}" class="btn btn-success">
+                        <i class="fas fa-play"></i> Run Now
+                    </a>
+                    <a href="{% url 'rules:rule_delete' rule.pk %}" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Description</h6>
+                        <p>{{ rule.description|default:"No description provided" }}</p>
+                        
+                        <h6>Details</h6>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Dataset:</strong></td>
+                                <td>
+                                    <a href="{% url 'datasets:dataset_detail' rule.dataset.pk %}">
+                                        {{ rule.dataset.name }}
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Type:</strong></td>
+                                <td><span class="badge bg-info">{{ rule.get_rule_type_display }}</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>DSL Expression:</strong></td>
+                                <td><code>{{ rule.dsl_expression }}</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    {% if rule.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Owner:</strong></td>
+                                <td>{{ rule.owner.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created:</strong></td>
+                                <td>{{ rule.created_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>Actions</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'rules:rule_run' rule.pk %}" class="btn btn-success">
+                                <i class="fas fa-play"></i> Run Rule Now
+                            </a>
+                            <a href="{% url 'rules:rule_toggle_active' rule.pk %}" class="btn btn-{% if rule.is_active %}secondary{% else %}primary{% endif %}">
+                                {% if rule.is_active %}
+                                    <i class="fas fa-toggle-off"></i> Deactivate Rule
+                                {% else %}
+                                    <i class="fas fa-toggle-on"></i> Activate Rule
+                                {% endif %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Runs Section -->
+                <div class="mt-4">
+                    <h5><i class="fas fa-history"></i> Recent Runs</h5>
+                    
+                    {% if rule_runs %}
+                        <div class="table-responsive mt-3">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Run ID</th>
+                                        <th>Started</th>
+                                        <th>Finished</th>
+                                        <th>Passed</th>
+                                        <th>Failed</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for run in rule_runs %}
+                                        <tr>
+                                            <td>{{ run.run_id|slice:":8" }}...</td>
+                                            <td>{{ run.started_at|date:"M d, H:i:s" }}</td>
+                                            <td>{{ run.finished_at|date:"M d, H:i:s" }}</td>
+                                            <td><span class="badge bg-success">{{ run.passed_count }}</span></td>
+                                            <td><span class="badge bg-danger">{{ run.failed_count }}</span></td>
+                                            <td>
+                                                {% if run.evidence_file %}
+                                                    <a href="{{ run.evidence_file.url }}" class="btn btn-sm btn-outline-primary" title="Download Evidence">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle"></i> This rule has not been run yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

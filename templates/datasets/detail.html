@@ -1,0 +1,709 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ dataset.name }} - Dataset Detail{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-database"></i> {{ dataset.name }}</h2>
+        <div>
+            <a href="{% url 'datasets:dataset_delete' dataset.pk %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+        </div>
+    </div>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Dataset Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Description:</strong> {{ dataset.description|default:"No description provided" }}</p>
+                            <p><strong>Source Type:</strong> {{ dataset.get_source_type_display }}</p>
+                            <p><strong>Owner:</strong> {{ dataset.owner.username }}</p>
+                            <p><strong>Created:</strong> {{ dataset.created_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Row Count:</strong> {{ dataset.row_count|default:"N/A" }}</p>
+                            <p><strong>Column Count:</strong> {{ dataset.column_count|default:"N/A" }}</p>
+                            <p><strong>Status:</strong> 
+                                {% if dataset.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Last Updated:</strong> {{ dataset.updated_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if dataset.schema %}
+                        <div class="mt-3">
+                            <h6><i class="fas fa-table"></i> Schema</h6>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Column</th>
+                                            <th>Data Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for column, dtype in dataset.schema.items %}
+                                            <tr>
+                                                <td>{{ column }}</td>
+                                                <td>{{ dtype }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Quality Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             id="qualityProgressBar"
+                             aria-valuemin="0" aria-valuemax="100">
+                            <span id="qualityScoreText" data-metric="quality_score"></span>%
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 data-metric="passed_runs">{{ quality_metrics.passed_runs }}</h4>
+                            <p class="text-muted">Passed Runs</p>
+                        </div>
+                        <div class="col-6">
+                            <h4 data-metric="failed_runs">{{ quality_metrics.failed_runs }}</h4>
+                            <p class="text-muted">Failed Runs</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 data-metric="rules_executed">{{ quality_metrics.rules_executed }}</h4>
+                            <p class="text-muted">Rules Executed</p>
+                        </div>
+                        <div class="col-6">
+                            <h4 data-metric="total_violations">{{ quality_metrics.total_violations }}</h4>
+                            <p class="text-muted">Violations</p>
+                        </div>
+                    </div>
+                    
+                    {% if quality_metrics.latest_run_date %}
+                        <p class="text-muted mt-3">
+                            <small><i class="fas fa-clock"></i> Last run: {{ quality_metrics.latest_run_date|date:"M d, H:i" }}</small>
+                        </p>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'datasets:dataset_run_rules' dataset.pk %}" class="btn btn-primary w-100">
+                            <i class="fas fa-play"></i> Run All Rules
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quality Trend Chart -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Quality Trend (Last 7 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 400px; position: relative;">
+                        <canvas id="qualityTrendChart" style="display: block; width: 100%; height: 100%;"></canvas>
+                    </div>
+                    <div id="chart-loading" class="text-center py-5" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading chart data...</p>
+                    </div>
+                    <div id="chart-error" class="text-center py-5" style="display: none;">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        <p>Error loading chart data. Please try refreshing the page.</p>
+                    </div>
+                    <div id="chart-empty" class="text-center py-5" style="display: none;">
+                        <i class="fas fa-chart-bar text-muted"></i>
+                        <p>No quality trend data available yet. Run some rules to generate data.</p>
+                        <a href="{% url 'datasets:dataset_run_rules' dataset.pk %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-play"></i> Run All Rules
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rule Pass Rates Chart -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Rule Pass Rates</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 400px; position: relative;">
+                        <canvas id="rulePassRatesChart" style="display: block; width: 100%; height: 100%;"></canvas>
+                    </div>
+                    <div id="rule-rates-loading" class="text-center py-5" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading rule pass rates...</p>
+                    </div>
+                    <div id="rule-rates-error" class="text-center py-5" style="display: none;">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        <p>Error loading rule pass rates. Please try refreshing the page.</p>
+                    </div>
+                    <div id="rule-rates-empty" class="text-center py-5" style="display: none;">
+                        <i class="fas fa-chart-bar text-muted"></i>
+                        <p>No rule pass rate data available yet. Run some rules to generate data.</p>
+                        <a href="{% url 'datasets:dataset_run_rules' dataset.pk %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-play"></i> Run All Rules
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rules Section -->
+    <div class="mt-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-list-check"></i> Associated Rules</h5>
+            <a href="{% url 'rules:rule_create' %}?dataset={{ dataset.pk }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Add Rule
+            </a>
+        </div>
+        
+        {% if dataset.rules.all %}
+            <div class="table-responsive mt-3">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>DSL Expression</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rule in dataset.rules.all %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'rules:rule_detail' rule.pk %}">
+                                        {{ rule.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ rule.get_rule_type_display }}</span>
+                                </td>
+                                <td>
+                                    <code>{{ rule.dsl_expression }}</code>
+                                </td>
+                                <td>
+                                    {% if rule.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'rules:rule_run' rule.pk %}" class="btn btn-sm btn-primary" title="Run Rule">
+                                        <i class="fas fa-play"></i>
+                                    </a>
+                                    <a href="{% url 'rules:rule_edit' rule.pk %}" class="btn btn-sm btn-warning" title="Edit Rule">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'rules:rule_delete' rule.pk %}" class="btn btn-sm btn-danger" title="Delete Rule">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-info-circle"></i> No rules have been created for this dataset yet.
+                <a href="{% url 'rules:rule_create' %}?dataset={{ dataset.pk }}" class="alert-link">Create your first rule now.</a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Rule Execution History -->
+    <div class="mt-4">
+        <h5><i class="fas fa-history"></i> Recent Rule Executions</h5>
+        {% if rule_runs %}
+            <div class="table-responsive mt-3">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Rule</th>
+                            <th>Status</th>
+                            <th>Passed</th>
+                            <th>Failed</th>
+                            <th>Executed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for run in rule_runs %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'rules:rule_detail' run.rule.pk %}">
+                                        {{ run.rule.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if run.failed_count == 0 %}
+                                        <span class="badge bg-success">PASSED</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">FAILED</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ run.passed_count }}</td>
+                                <td>{{ run.failed_count }}</td>
+                                <td>{{ run.started_at|date:"M d, H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted">No rule executions yet.</p>
+        {% endif %}
+    </div>
+    
+    <!-- Incidents Section -->
+    <div class="mt-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-exclamation-triangle"></i> Recent Incidents</h5>
+            <a href="{% url 'incidents:incident_list' %}?dataset={{ dataset.pk }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-list"></i> View All
+            </a>
+        </div>
+        
+        {% if incidents %}
+            <div class="table-responsive mt-3">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Rule</th>
+                            <th>Severity</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in incidents %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'incidents:incident_detail' incident.pk %}">
+                                        {{ incident.title }}
+                                    </a>
+                                </td>
+                                <td>{{ incident.rule.name }}</td>
+                                <td>
+                                    {% if incident.severity == 'HIGH' %}
+                                        <span class="badge bg-danger">{{ incident.get_severity_display }}</span>
+                                    {% elif incident.severity == 'MEDIUM' %}
+                                        <span class="badge bg-warning">{{ incident.get_severity_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-info">{{ incident.get_severity_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if incident.status == 'OPEN' %}
+                                        <span class="badge bg-danger">{{ incident.get_status_display }}</span>
+                                    {% elif incident.status == 'ACKNOWLEDGED' %}
+                                        <span class="badge bg-warning">{{ incident.get_status_display }}</span>
+                                    {% elif incident.status == 'RESOLVED' %}
+                                        <span class="badge bg-success">{{ incident.get_status_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ incident.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ incident.created_at|date:"M d, H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mt-3">No incidents reported for this dataset.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Parse initial data passed from the view with error handling
+let initialQualityTrendData = [];
+let initialRulePassRates = [];
+
+try {
+    const qualityTrendDataStr = '{{ quality_trend_data|escapejs }}';
+    if (qualityTrendDataStr && qualityTrendDataStr !== 'null' && qualityTrendDataStr !== 'undefined') {
+        initialQualityTrendData = JSON.parse(qualityTrendDataStr);
+    }
+} catch (e) {
+    console.error('Error parsing initial quality trend data:', e);
+    initialQualityTrendData = [];
+}
+
+try {
+    const rulePassRatesStr = '{{ rule_pass_rates|escapejs }}';
+    if (rulePassRatesStr && rulePassRatesStr !== 'null' && rulePassRatesStr !== 'undefined') {
+        initialRulePassRates = JSON.parse(rulePassRatesStr);
+    }
+} catch (e) {
+    console.error('Error parsing initial rule pass rates data:', e);
+    initialRulePassRates = [];
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize charts with initial data immediately
+    initializeCharts(initialQualityTrendData, initialRulePassRates);
+    
+    // Note: Removed AJAX requests to prevent network errors
+    // Charts will display with initial data only
+});
+
+function hideAllLoadingIndicators() {
+    // Hide all loading indicators
+    const loadingElements = [
+        'chart-loading',
+        'rule-rates-loading'
+    ];
+    
+    loadingElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+    
+    // Also hide error indicators if they exist
+    const errorElements = [
+        'chart-error',
+        'rule-rates-error'
+    ];
+    
+    errorElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            // Only hide error messages if we have data to show
+            const emptyElements = [
+                'chart-empty',
+                'rule-rates-empty'
+            ];
+            
+            let hasData = false;
+            for (const emptyId of emptyElements) {
+                const emptyElement = document.getElementById(emptyId);
+                if (emptyElement && emptyElement.style.display !== 'none') {
+                    hasData = true;
+                    break;
+                }
+            }
+            
+            // If we don't have data and we're getting network errors, show a more informative message
+            if (!hasData) {
+                // Check if we have chart instances
+                if (window.trendChartInstance || window.ruleRatesChartInstance) {
+                    // Charts are displayed, so hide error
+                    element.style.display = 'none';
+                }
+            }
+        }
+    });
+}
+
+function initializeCharts(qualityTrendData, rulePassRates) {
+    try {
+        console.log('Initializing charts with initial data:', { qualityTrendData, rulePassRates });
+        
+        // Initialize the quality trend chart with initial data
+        const trendCtx = document.getElementById('qualityTrendChart');
+        if (trendCtx) {
+            const ctx = trendCtx.getContext('2d');
+            if (ctx && qualityTrendData && Array.isArray(qualityTrendData) && qualityTrendData.length > 0) {
+                const dates = qualityTrendData.map(d => d.date);
+                const passedData = qualityTrendData.map(d => d.passed);
+                const failedData = qualityTrendData.map(d => d.failed);
+                
+                // Destroy existing chart if it exists
+                if (window.trendChartInstance) {
+                    window.trendChartInstance.destroy();
+                }
+                
+                window.trendChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [
+                            {
+                                label: 'Passed',
+                                data: passedData,
+                                borderColor: 'rgba(40, 167, 69, 1)',
+                                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'Failed',
+                                data: failedData,
+                                borderColor: 'rgba(220, 53, 69, 1)',
+                                backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                                tension: 0.4,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: '#ffffff'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Show the chart
+                trendCtx.style.display = 'block';
+                const loadingElement = document.getElementById('chart-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            } else {
+                // Display empty message when there's no data
+                console.log('No initial quality trend data available, showing empty message');
+                const emptyElement = document.getElementById('chart-empty');
+                if (emptyElement) {
+                    emptyElement.style.display = 'block';
+                }
+                trendCtx.style.display = 'none';
+                const loadingElement = document.getElementById('chart-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            }
+        }
+        
+        // Initialize rule pass rates chart with initial data
+        initializeRulePassRatesChart(rulePassRates);
+        
+    } catch (error) {
+        console.error('Error initializing charts:', error);
+        const errorElement = document.getElementById('chart-error');
+        if (errorElement) {
+            errorElement.style.display = 'block';
+        }
+        const trendCtx = document.getElementById('qualityTrendChart');
+        if (trendCtx) {
+            trendCtx.style.display = 'none';
+        }
+        const loadingElement = document.getElementById('chart-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+}
+
+function initializeRulePassRatesChart(rulePassRates) {
+    try {
+        const ratesCtx = document.getElementById('rulePassRatesChart');
+        if (ratesCtx) {
+            const ctx = ratesCtx.getContext('2d');
+            if (ctx && rulePassRates && Array.isArray(rulePassRates) && rulePassRates.length > 0) {
+                const ruleNames = rulePassRates.map(r => r.rule_name);
+                const passRates = rulePassRates.map(r => r.pass_rate);
+                
+                // Destroy existing chart if it exists
+                if (window.ruleRatesChartInstance) {
+                    window.ruleRatesChartInstance.destroy();
+                }
+                
+                window.ruleRatesChartInstance = new Chart(ctx, {
+                    type: 'line', // Changed from 'bar' to 'line'
+                    data: {
+                        labels: ruleNames,
+                        datasets: [{
+                            label: 'Pass Rate (%)',
+                            data: passRates,
+                            borderColor: 'rgba(54, 162, 235, 1)', // Blue line
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)', // Light blue fill
+                            pointBackgroundColor: 'rgba(54, 162, 235, 1)', // Blue points
+                            pointBorderColor: '#fff', // White point borders
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            tension: 0.4, // Smooth curves
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    color: '#ffffff',
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#ffffff',
+                                    autoSkip: false,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Show the chart
+                ratesCtx.style.display = 'block';
+                const loadingElement = document.getElementById('rule-rates-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            } else {
+                // Display empty message when there's no data
+                console.log('No initial rule pass rates data available, showing empty message');
+                const emptyElement = document.getElementById('rule-rates-empty');
+                if (emptyElement) {
+                    emptyElement.style.display = 'block';
+                }
+                ratesCtx.style.display = 'none';
+                const loadingElement = document.getElementById('rule-rates-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error initializing rule pass rates chart:', error);
+        const errorElement = document.getElementById('rule-rates-error');
+        if (errorElement) {
+            errorElement.style.display = 'block';
+        }
+        const ratesCtx = document.getElementById('rulePassRatesChart');
+        if (ratesCtx) {
+            ratesCtx.style.display = 'none';
+        }
+        const loadingElement = document.getElementById('rule-rates-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+}
+
+// Initialize Chart.js defaults
+if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = '#ffffff';
+    Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+}
+
+// Helper function to determine if background is dark
+function isDarkBackground(bgColor) {
+    // Parse rgba or rgb color
+    if (bgColor.startsWith('rgba')) {
+        const match = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (match) {
+            const r = parseInt(match[1]);
+            const g = parseInt(match[2]);
+            const b = parseInt(match[3]);
+            // Calculate brightness (https://www.w3.org/TR/AERT/#color-contrast)
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            return brightness < 128;
+        }
+    } else if (bgColor.startsWith('rgb')) {
+        const match = bgColor.match(/rgb?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (match) {
+            const r = parseInt(match[1]);
+            const g = parseInt(match[2]);
+            const b = parseInt(match[3]);
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            return brightness < 128;
+        }
+    }
+    // Default assumption for glassmorphism backgrounds
+    return true;
+}
+</script>
+{% endblock %}

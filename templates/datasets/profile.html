@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ dataset.name }} - Dataset Profile - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-chart-bar"></i> Dataset Profile: {{ dataset.name }}</h1>
+                <div class="btn-group">
+                    <a href="{% url 'datasets:dataset_detail' dataset.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dataset
+                    </a>
+                    <button id="refreshProfile" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Refresh Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quality Score Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card glassmorphic-card">
+                <div class="card-body text-center">
+                    <h2>Quality Score</h2>
+                    <div class="display-1 fw-bold text-{% if dataset.quality_score >= 90 %}success{% elif dataset.quality_score >= 70 %}warning{% else %}danger{% endif %}">
+                        {{ dataset.quality_score|floatformat:1 }}<small class="fs-4">/100</small>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-{% if dataset.quality_score >= 90 %}success{% elif dataset.quality_score >= 70 %}warning{% else %}danger{% endif %} fs-6">
+                            {% if dataset.quality_score >= 90 %}Excellent{% elif dataset.quality_score >= 70 %}Good{% elif dataset.quality_score >= 50 %}Fair{% else %}Poor{% endif %}
+                        </span>
+                    </div>
+                    <p class="text-muted mt-2">Overall data quality assessment</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Basic Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card glassmorphic-card text-center">
+                <div class="card-body">
+                    <i class="fas fa-table fa-2x text-primary mb-2"></i>
+                    <h3 class="card-title">{{ dataset.row_count }}</h3>
+                    <p class="card-text">Rows</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card text-center">
+                <div class="card-body">
+                    <i class="fas fa-columns fa-2x text-info mb-2"></i>
+                    <h3 class="card-title">{{ dataset.column_count }}</h3>
+                    <p class="card-text">Columns</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card text-center">
+                <div class="card-body">
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <h3 class="card-title">{{ dataset.rules.count }}</h3>
+                    <p class="card-text">Rules</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card text-center">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                    <h3 class="card-title">{{ dataset.incidents.count }}</h3>
+                    <p class="card-text">Incidents</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Column Statistics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card glassmorphic-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-list"></i> Column Statistics</h5>
+                    <span class="badge bg-primary">{{ column_stats|length }} Columns</span>
+                </div>
+                <div class="card-body">
+                    {% if column_stats %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Column Name</th>
+                                        <th>Data Type</th>
+                                        <th>Non-Null Count</th>
+                                        <th>Null Count</th>
+                                        <th>Null %</th>
+                                        <th>Unique Values</th>
+                                        <th>Min</th>
+                                        <th>Max</th>
+                                        <th>Mean</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for column_name, stats in column_stats.items %}
+                                        <tr>
+                                            <td><strong>{{ column_name }}</strong></td>
+                                            <td><span class="badge bg-secondary">{{ stats.dtype }}</span></td>
+                                            <td>{{ stats.non_null_count }}</td>
+                                            <td>{{ stats.null_count }}</td>
+                                            <td>
+                                                <span class="badge bg-{% if stats.null_percentage > 20 %}danger{% elif stats.null_percentage > 5 %}warning{% else %}success{% endif %}">
+                                                    {{ stats.null_percentage }}%
+                                                </span>
+                                            </td>
+                                            <td>{{ stats.unique_count }}</td>
+                                            <td>{{ stats.min|default:"-" }}</td>
+                                            <td>{{ stats.max|default:"-" }}</td>
+                                            <td>{{ stats.mean|default:"-"|floatformat:2 }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-info-circle fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">No column statistics available.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Schema Information -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-project-diagram"></i> Schema Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if schema_info.columns %}
+                        <div class="row">
+                            {% for column in schema_info.columns %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="card glassmorphic-card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <span class="badge bg-primary me-2">{{ column.name }}</span>
+                                            </h6>
+                                            <p class="card-text">
+                                                <strong>Type:</strong> <span class="badge bg-secondary">{{ column.dtype }}</span><br>
+                                                <strong>Sample Values:</strong> 
+                                                {% for value in column.sample_values %}
+                                                    <span class="badge bg-light text-dark me-1">{{ value }}</span>
+                                                {% endfor %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-info-circle fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">No schema information available.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Refresh profile button
+    const refreshButton = document.getElementById('refreshProfile');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            const originalClass = icon.className;
+            icon.className = 'fas fa-spinner fa-spin';
+            
+            fetch('{% url "datasets:refresh_dataset_profile" dataset.id %}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3';
+                        alertDiv.innerHTML = `
+                            <strong>Success!</strong> ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        document.body.appendChild(alertDiv);
+                        
+                        // Reload the page after a short delay
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        // Show error message
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3';
+                        alertDiv.innerHTML = `
+                            <strong>Error!</strong> ${data.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        document.body.appendChild(alertDiv);
+                        
+                        icon.className = originalClass;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Show error message
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed top-0 end-0 m-3';
+                    alertDiv.innerHTML = `
+                        <strong>Error!</strong> Failed to refresh profile
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.body.appendChild(alertDiv);
+                    
+                    icon.className = originalClass;
+                });
+        });
+    }
+});
+</script>
+{% endblock %}

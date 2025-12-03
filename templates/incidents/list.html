@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+
+{% block title %}Incidents - Data Quality Watchtower{% endblock %}
+
+{% block page_title %}Incidents{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card glassmorphic-card animated fadeInUp">
+            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                <h5 class="mb-3 mb-md-0"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Incident Management</h5>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'incidents:incident_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Create Incident
+                    </a>
+                    <a href="{% url 'incidents:incident_dashboard' %}" class="btn btn-success">
+                        <i class="fas fa-chart-bar" aria-hidden="true"></i> Dashboard
+                    </a>
+                    <button class="btn btn-info" id="bulkUpdateBtn" disabled aria-label="Bulk update selected incidents">
+                        <i class="fas fa-edit" aria-hidden="true"></i> Bulk Update
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filter Form -->
+                <form method="get" class="mb-4" role="search">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="Search incidents..." value="{{ search_query }}" 
+                                   aria-label="Search incidents">
+                        </div>
+                        <div class="col-md-3">
+                            <select name="status" class="form-select" aria-label="Filter by status">
+                                <option value="">All Statuses</option>
+                                <option value="OPEN" {% if status_filter == 'OPEN' %}selected{% endif %}>Open</option>
+                                <option value="ACKNOWLEDGED" {% if status_filter == 'ACKNOWLEDGED' %}selected{% endif %}>Acknowledged</option>
+                                <option value="RESOLVED" {% if status_filter == 'RESOLVED' %}selected{% endif %}>Resolved</option>
+                                <option value="MUTED" {% if status_filter == 'MUTED' %}selected{% endif %}>Muted</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select name="severity" class="form-select" aria-label="Filter by severity">
+                                <option value="">All Severities</option>
+                                <option value="LOW" {% if severity_filter == 'LOW' %}selected{% endif %}>Low</option>
+                                <option value="MEDIUM" {% if severity_filter == 'MEDIUM' %}selected{% endif %}>Medium</option>
+                                <option value="HIGH" {% if severity_filter == 'HIGH' %}selected{% endif %}>High</option>
+                                <option value="CRITICAL" {% if severity_filter == 'CRITICAL' %}selected{% endif %}>Critical</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="btn-group w-100" role="group">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-filter" aria-hidden="true"></i> Filter
+                                </button>
+                                <a href="{% url 'incidents:incident_list' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times" aria-hidden="true"></i> Clear
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- Incidents Table -->
+                {% if page_obj %}
+                    <form method="post" id="bulkUpdateForm" action="{% url 'incidents:incident_bulk_update' %}">
+                        {% csrf_token %}
+                        <div class="table-responsive">
+                            <table class="table table-hover" aria-label="Incidents table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">
+                                            <input type="checkbox" id="selectAll" class="form-check-input" aria-label="Select all incidents">
+                                        </th>
+                                        <th scope="col">Title</th>
+                                        <th scope="col">Dataset</th>
+                                        <th scope="col">Rule</th>
+                                        <th scope="col">Severity</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">SLA</th>
+                                        <th scope="col">Created</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for incident in page_obj %}
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox" name="incident_ids" value="{{ incident.id }}" 
+                                                       class="form-check-input select-item" aria-label="Select incident {{ incident.title }}">
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'incidents:incident_detail' incident.pk %}" aria-label="View details for {{ incident.title }}">
+                                                    {{ incident.title }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'datasets:dataset_detail' incident.dataset.pk %}" aria-label="View dataset {{ incident.dataset.name }}">
+                                                    {{ incident.dataset.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'rules:rule_detail' incident.rule.pk %}" aria-label="View rule {{ incident.rule.name }}">
+                                                    {{ incident.rule.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ incident.severity|lower }}" aria-label="Severity: {{ incident.severity }}">
+                                                    {{ incident.severity }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if incident.status == 'OPEN' %}danger{% elif incident.status == 'ACKNOWLEDGED' %}warning{% elif incident.status == 'RESOLVED' %}success{% else %}secondary{% endif %}" aria-label="Status: {{ incident.status }}">
+                                                    {{ incident.status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if incident.sla_status == 'BREACHED' %}danger{% elif incident.sla_status == 'WARNING' %}warning{% else %}success{% endif %}" aria-label="SLA status: {{ incident.sla_status }}">
+                                                    {{ incident.sla_status }}
+                                                </span>
+                                            </td>
+                                            <td>{{ incident.created_at|date:"M d, H:i" }}</td>
+                                            <td>
+                                                <div class="btn-group" role="group" aria-label="Incident actions">
+                                                    <a href="{% url 'incidents:incident_detail' incident.pk %}" 
+                                                       class="btn btn-sm btn-outline-primary" title="View details">
+                                                        <i class="fas fa-eye" aria-hidden="true"></i>
+                                                        <span class="sr-only">View</span>
+                                                    </a>
+                                                    <a href="{% url 'incidents:incident_evidence' incident.pk %}" 
+                                                       class="btn btn-sm btn-outline-info" title="View evidence">
+                                                        <i class="fas fa-file-alt" aria-hidden="true"></i>
+                                                        <span class="sr-only">Evidence</span>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Bulk Update Modal -->
+                        <div class="modal fade" id="bulkUpdateModal" tabindex="-1" aria-hidden="true" aria-labelledby="bulkUpdateModalLabel">
+                            <div class="modal-dialog">
+                                <div class="modal-content glassmorphic-card">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="bulkUpdateModalLabel">Bulk Update Incidents</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label for="bulkStatus" class="form-label">Status</label>
+                                            <select id="bulkStatus" name="status" class="form-select">
+                                                <option value="">-- Select Status --</option>
+                                                <option value="OPEN">Open</option>
+                                                <option value="ACKNOWLEDGED">Acknowledged</option>
+                                                <option value="RESOLVED">Resolved</option>
+                                                <option value="MUTED">Muted</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="bulkAssignedTo" class="form-label">Assign To</label>
+                                            <select id="bulkAssignedTo" name="assigned_to" class="form-select">
+                                                <option value="">-- Unassigned --</option>
+                                                {% for user in users %}
+                                                    <option value="{{ user.id }}">{{ user.username }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Update</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                        <nav aria-label="Incident pagination">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if severity_filter %}&severity={{ severity_filter }}{% endif %}" aria-label="Previous page">
+                                            Previous
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active" aria-current="page">
+                                            <span class="page-link">
+                                                {{ num }}
+                                            </span>
+                                        </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if severity_filter %}&severity={{ severity_filter }}{% endif %}">
+                                                {{ num }}
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if severity_filter %}&severity={{ severity_filter }}{% endif %}" aria-label="Next page">
+                                            Next
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3" aria-hidden="true"></i>
+                        <h5>No incidents found</h5>
+                        <p class="text-muted">Great job! No data quality issues detected.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Bulk update functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('selectAll');
+        const selectItems = document.querySelectorAll('.select-item');
+        const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
+        const bulkUpdateForm = document.getElementById('bulkUpdateForm');
+        
+        // Select all checkboxes
+        selectAll.addEventListener('change', function() {
+            selectItems.forEach(item => {
+                item.checked = this.checked;
+            });
+            bulkUpdateBtn.disabled = !this.checked;
+        });
+        
+        // Enable/disable bulk update button
+        selectItems.forEach(item => {
+            item.addEventListener('change', function() {
+                const checkedItems = document.querySelectorAll('.select-item:checked');
+                bulkUpdateBtn.disabled = checkedItems.length === 0;
+            });
+        });
+        
+        // Show bulk update modal
+        bulkUpdateBtn.addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('bulkUpdateModal'));
+            modal.show();
+        });
+    });
+</script>
+{% endblock %}

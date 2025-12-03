@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12 text-center py-5">
+            <h1 class="display-4">Data Quality Watchtower</h1>
+            <p class="lead">Monitor and ensure the quality of your data with automated rules and real-time incident tracking.</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Dashboard</h5>
+                    <p class="card-text">View data quality metrics and trends with interactive charts.</p>
+                    <a href="{% url 'dashboard:dashboard_home' %}" class="btn btn-primary">View Dashboard</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-database fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">Datasets</h5>
+                    <p class="card-text">Upload and manage your data sources for quality monitoring.</p>
+                    <a href="{% url 'datasets:dataset_list' %}" class="btn btn-success">Manage Datasets</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-list fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">Rules</h5>
+                    <p class="card-text">Define and manage data quality rules for validation.</p>
+                    <a href="{% url 'rules:rule_list' %}" class="btn btn-info">Manage Rules</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Incidents</h5>
+                    <p class="card-text">Track and resolve data quality issues and violations.</p>
+                    <a href="{% url 'incidents:incident_list' %}" class="btn btn-warning">View Incidents</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-cogs fa-3x text-secondary mb-3"></i>
+                    <h5 class="card-title">Administration</h5>
+                    <p class="card-text">Access the Django admin panel for advanced configuration.</p>
+                    <a href="/admin/" class="btn btn-secondary">Admin Panel</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-code fa-3x text-dark mb-3"></i>
+                    <h5 class="card-title">API</h5>
+                    <p class="card-text">Access data quality metrics through our REST API.</p>
+                    <a href="/api/dashboard/stats/" class="btn btn-dark">API Docs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

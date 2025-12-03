@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}Rules - Data Quality Watchtower{% endblock %}
+
+{% block page_title %}Rules{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card glassmorphic-card animated fadeInUp">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-list-check"></i> Rule Management</h5>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'rules:template_list' %}" class="btn btn-info">
+                        <i class="fas fa-clone"></i> Use Templates
+                    </a>
+                    <a href="{% url 'rules:rule_run_timeline' %}" class="btn btn-success">
+                        <i class="fas fa-history"></i> Timeline
+                    </a>
+                    <a href="{% url 'rules:rule_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Rule
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filter Form -->
+                <form method="get" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="Search rules..." value="{{ search_query }}">
+                        </div>
+                        <div class="col-md-3">
+                            <select name="dataset" class="form-select">
+                                <option value="">All Datasets</option>
+                                {% for dataset in datasets %}
+                                    <option value="{{ dataset.id }}" {% if dataset_filter == dataset.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ dataset.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select name="active" class="form-select">
+                                <option value="">All Statuses</option>
+                                <option value="true" {% if active_filter == 'true' %}selected{% endif %}>Active</option>
+                                <option value="false" {% if active_filter == 'false' %}selected{% endif %}>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="btn-group" role="group">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                                <a href="{% url 'rules:rule_list' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Clear
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- Rules Table -->
+                {% if page_obj %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Dataset</th>
+                                    <th>Type</th>
+                                    <th>DSL Expression</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rule in page_obj %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'rules:rule_detail' rule.pk %}">
+                                                {{ rule.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'datasets:dataset_detail' rule.dataset.pk %}">
+                                                {{ rule.dataset.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ rule.get_rule_type_display }}</span>
+                                        </td>
+                                        <td>{{ rule.dsl_expression }}</td>
+                                        <td>
+                                            {% if rule.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'rules:rule_detail' rule.pk %}" 
+                                                   class="btn btn-sm btn-outline-primary" title="View">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{% url 'rules:rule_edit' rule.pk %}" 
+                                                   class="btn btn-sm btn-outline-warning" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'rules:rule_run' rule.pk %}" 
+                                                   class="btn btn-sm btn-outline-success" title="Run">
+                                                    <i class="fas fa-play"></i>
+                                                </a>
+                                                <a href="{% url 'rules:rule_toggle_active' rule.pk %}" 
+                                                   class="btn btn-sm btn-outline-{% if rule.is_active %}secondary{% else %}success{% endif %}" 
+                                                   title="{% if rule.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                                    {% if rule.is_active %}
+                                                        <i class="fas fa-toggle-off"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-toggle-on"></i>
+                                                    {% endif %}
+                                                </a>
+                                                <a href="{% url 'rules:rule_delete' rule.pk %}" 
+                                                   class="btn btn-sm btn-outline-danger" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                        <nav aria-label="Rule pagination">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if dataset_filter %}&dataset={{ dataset_filter }}{% endif %}{% if active_filter %}&active={{ active_filter }}{% endif %}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-list-check fa-3x text-muted mb-3"></i>
+                        <h5>No rules found</h5>
+                        <p class="text-muted">Get started by creating your first data quality rule.</p>
+                        <a href="{% url 'rules:rule_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Rule
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

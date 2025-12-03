@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}User Profile - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-user-circle"></i> User Profile</h1>
+                <a href="{% url 'users:logout' %}" class="btn btn-outline-danger">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Profile Card -->
+        <div class="col-md-8">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-user"></i> Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center mb-3">
+                            <div class="profile-avatar mx-auto">
+                                <div class="bg-gradient rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 120px; height: 120px;">
+                                    <i class="fas fa-user fa-4x text-white"></i>
+                                </div>
+                                <h5 class="mt-3">{{ user.username }}</h5>
+                                <span class="badge 
+                                    {% if user.role == 'admin' %}bg-danger{% elif user.role == 'viewer' %}bg-info{% else %}bg-secondary{% endif %}">
+                                    {{ user.get_role_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <div class="profile-details">
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong><i class="fas fa-user-tag"></i> Username:</strong></div>
+                                    <div class="col-sm-8">{{ user.username }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong><i class="fas fa-envelope"></i> Email:</strong></div>
+                                    <div class="col-sm-8">{{ user.email }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong><i class="fas fa-user-friends"></i> Full Name:</strong></div>
+                                    <div class="col-sm-8">
+                                        {% if user.first_name or user.last_name %}
+                                            {{ user.first_name }} {{ user.last_name }}
+                                        {% else %}
+                                            <span class="text-muted">Not provided</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong><i class="fas fa-calendar-alt"></i> Member Since:</strong></div>
+                                    <div class="col-sm-8">{{ user.date_joined|date:"M d, Y" }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong><i class="fas fa-clock"></i> Last Login:</strong></div>
+                                    <div class="col-sm-8">
+                                        {% if user.last_login %}
+                                            {{ user.last_login|date:"M d, Y H:i" }}
+                                        {% else %}
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong><i class="fas fa-id-badge"></i> Role:</strong></div>
+                                    <div class="col-sm-8">
+                                        {% if user.role == 'admin' %}
+                                            <span class="badge bg-danger"><i class="fas fa-crown"></i> Administrator</span>
+                                        {% elif user.role == 'viewer' %}
+                                            <span class="badge bg-info"><i class="fas fa-eye"></i> Viewer</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ user.get_role_display }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong><i class="fas fa-shield-alt"></i> Permissions:</strong></div>
+                                    <div class="col-sm-8">
+                                        {% if user.is_superuser %}
+                                            <span class="badge bg-success"><i class="fas fa-key"></i> Superuser</span>
+                                        {% elif user.is_staff %}
+                                            <span class="badge bg-primary"><i class="fas fa-tools"></i> Staff</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary"><i class="fas fa-user"></i> Regular User</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Activity Summary -->
+        <div class="col-md-4">
+            <div class="card glassmorphic-card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Activity Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-item d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <i class="fas fa-list-check text-primary"></i>
+                            <span class="ms-2">Rules Created</span>
+                        </div>
+                        <span class="badge bg-primary">0</span>
+                    </div>
+                    <div class="activity-item d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            <span class="ms-2">Incidents Triage</span>
+                        </div>
+                        <span class="badge bg-warning">0</span>
+                    </div>
+                    <div class="activity-item d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <i class="fas fa-file-contract text-success"></i>
+                            <span class="ms-2">Reports Generated</span>
+                        </div>
+                        <span class="badge bg-success">0</span>
+                    </div>
+                    <div class="activity-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-database text-info"></i>
+                            <span class="ms-2">Datasets Managed</span>
+                        </div>
+                        <span class="badge bg-info">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Activity -->
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-feed">
+                        <div class="feed-item mb-3">
+                            <div class="feed-date text-muted small">2 hours ago</div>
+                            <div class="feed-content">
+                                <i class="fas fa-sign-in-alt text-success"></i>
+                                <span class="ms-2">Logged in to the system</span>
+                            </div>
+                        </div>
+                        <div class="feed-item mb-3">
+                            <div class="feed-date text-muted small">1 day ago</div>
+                            <div class="feed-content">
+                                <i class="fas fa-database text-info"></i>
+                                <span class="ms-2">Created new dataset "Sales_Q4_2025"</span>
+                            </div>
+                        </div>
+                        <div class="feed-item">
+                            <div class="feed-date text-muted small">3 days ago</div>
+                            <div class="feed-content">
+                                <i class="fas fa-list-check text-primary"></i>
+                                <span class="ms-2">Created 3 new data quality rules</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.profile-avatar .bg-gradient {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+}
+
+.activity-item {
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+}
+
+.feed-item {
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    padding-left: 15px;
+    position: relative;
+}
+
+.feed-item:before {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #2575fc;
+    left: -7px;
+    top: 5px;
+}
+
+.feed-date {
+    margin-bottom: 5px;
+}
+
+.glassmorphic-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,443 @@
+{% extends 'base.html' %}
+
+{% block title %}Enhanced Dataset Upload - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Enhanced Dataset Upload</h1>
+                <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Datasets
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-upload"></i> Upload Dataset</h5>
+                </div>
+                <div class="card-body">
+                    <form id="upload-form">
+                        <div class="mb-3">
+                            <label for="dataset-name" class="form-label">Dataset Name</label>
+                            <input type="text" class="form-control" id="dataset-name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="file-upload" class="form-label">CSV File</label>
+                            <input class="form-control" type="file" id="file-upload" name="file" accept=".csv" required>
+                            <div class="form-text">Upload a CSV file with column headers in the first row.</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary" id="upload-btn">
+                                <i class="fas fa-upload"></i> Upload and Analyze
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Analysis Results Section -->
+            <div class="card glassmorphic-card mt-4" id="analysis-results" style="display: none;">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Dataset Analysis Results</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3">
+                        <div class="progress-bar" role="progressbar" style="width: 0%;" id="analysis-progress">0%</div>
+                    </div>
+                    
+                    <div id="analysis-content">
+                        <!-- Analysis results will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Enhanced Upload Features</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Privacy-Preserving Analysis</h6>
+                    <ul>
+                        <li>Data is processed locally in your browser</li>
+                        <li>Raw data never leaves your device</li>
+                        <li>Only metadata and rules are sent to server</li>
+                    </ul>
+                    
+                    <h6>Automatic Profiling</h6>
+                    <ul>
+                        <li>Null count per column</li>
+                        <li>Duplicate ratios</li>
+                        <li>Min/max for numeric fields</li>
+                        <li>Inferred patterns (email/date/phone)</li>
+                        <li>Cardinality for unique detection</li>
+                        <li>Foreign-key hints</li>
+                    </ul>
+                    
+                    <h6>Smart Rule Generation</h6>
+                    <ul>
+                        <li>NOT NULL rules</li>
+                        <li>UNIQUENESS rules</li>
+                        <li>RANGE rules</li>
+                        <li>REGEX pattern rules</li>
+                        <li>FOREIGN KEY rules</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Include PapaParse for CSV parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+<!-- Include D3.js for visualizations -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<!-- Include our dataset profiler -->
+<script src="/static/js/dataset_profiler.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('upload-form');
+    const fileUpload = document.getElementById('file-upload');
+    const analysisResults = document.getElementById('analysis-results');
+    const analysisContent = document.getElementById('analysis-content');
+    const analysisProgress = document.getElementById('analysis-progress');
+    
+    // Create profiler instance
+    const profiler = new DatasetProfiler();
+    
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!fileUpload.files.length) {
+            alert('Please select a file to upload');
+            return;
+        }
+        
+        const file = fileUpload.files[0];
+        const datasetName = document.getElementById('dataset-name').value;
+        
+        // Show analysis section
+        analysisResults.style.display = 'block';
+        
+        // Reset progress
+        analysisProgress.style.width = '0%';
+        analysisProgress.textContent = '0%';
+        
+        // Parse CSV file
+        profiler.parseCSV(file)
+            .then(results => {
+                // Update progress
+                analysisProgress.style.width = '30%';
+                analysisProgress.textContent = '30%';
+                
+                // Profile dataset
+                const profile = profiler.profileDataset();
+                
+                // Update progress
+                analysisProgress.style.width = '60%';
+                analysisProgress.textContent = '60%';
+                
+                // Generate rules
+                const rules = profiler.generateRules();
+                
+                // Update progress
+                analysisProgress.style.width = '90%';
+                analysisProgress.textContent = '90%';
+                
+                // Execute rules locally
+                const ruleResults = profiler.executeRulesLocally();
+                
+                // Update progress
+                analysisProgress.style.width = '100%';
+                analysisProgress.textContent = '100%';
+                
+                // Display results
+                displayResults(profile, rules, ruleResults, datasetName);
+                
+                // Create visualizations
+                setTimeout(() => {
+                    profiler.createVisualizations('visualizations-container', ruleResults);
+                }, 500);
+            })
+            .catch(error => {
+                console.error('Error processing dataset:', error);
+                analysisContent.innerHTML = '<div class="alert alert-danger">Error processing dataset: ' + error.message + '</div>';
+            });
+    });
+    
+    function displayResults(profile, rules, ruleResults, datasetName) {
+        let html = `
+            <h5>Dataset Profile: ${datasetName}</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Rows:</strong> ${profile.rowCount}</p>
+                    <p><strong>Columns:</strong> ${profile.columnCount}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Generated Rules:</strong> ${rules.length}</p>
+                    <p><strong>Overall Quality Score:</strong> <span id="quality-score">${profiler.calculateQualityScore(ruleResults).toFixed(1)}%</span></p>
+                </div>
+            </div>
+            
+            <h6>Column Analysis</h6>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Data Type</th>
+                            <th>Null %</th>
+                            <th>Unique %</th>
+                            <th>Min/Max</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        Object.keys(profile.columns).forEach(column => {
+            const col = profile.columns[column];
+            html += `
+                <tr>
+                    <td>${column}</td>
+                    <td>${col.dataType}</td>
+                    <td>${col.nullPercentage.toFixed(1)}%</td>
+                    <td>${col.uniquePercentage.toFixed(1)}%</td>
+                    <td>
+                        ${col.min !== null ? `${col.min} / ${col.max}` : 'N/A'}
+                        ${col.minLength !== null ? `${col.minLength}-${col.maxLength} chars` : ''}
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            
+            <h6>Detected Patterns</h6>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Email %</th>
+                            <th>Phone %</th>
+                            <th>URL %</th>
+                            <th>Date %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        Object.keys(profile.patterns).forEach(column => {
+            const patterns = profile.patterns[column];
+            html += `
+                <tr>
+                    <td>${column}</td>
+                    <td>${patterns.email.toFixed(1)}%</td>
+                    <td>${patterns.phone.toFixed(1)}%</td>
+                    <td>${patterns.url.toFixed(1)}%</td>
+                    <td>${patterns.date.toFixed(1)}%</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            
+            <h6>Recommended Rules</h6>
+            <div id="rules-container">
+                <div class="row" id="rules-list">
+                    <!-- Rules will be displayed here -->
+                </div>
+            </div>
+            
+            <h6>Data Quality Visualizations</h6>
+            <div id="visualizations-container" class="row">
+                <!-- Visualizations will be displayed here -->
+            </div>
+            
+            <div class="mt-4">
+                <button class="btn btn-success" id="save-dataset-btn">
+                    <i class="fas fa-save"></i> Save Dataset and Rules
+                </button>
+            </div>
+        `;
+        
+        analysisContent.innerHTML = html;
+        
+        // Display rules
+        displayRules(rules);
+        
+        // Add event listeners
+        document.getElementById('save-dataset-btn').addEventListener('click', function() {
+            saveDatasetAndRules(profile, rules, datasetName);
+        });
+    }
+    
+    function displayRules(rules) {
+        const rulesList = document.getElementById('rules-list');
+        rulesList.innerHTML = '';
+        
+        rules.forEach((rule, index) => {
+            const ruleCard = document.createElement('div');
+            ruleCard.className = 'col-md-6 mb-3';
+            ruleCard.innerHTML = `
+                <div class="card glassmorphic-card">
+                    <div class="card-body">
+                        <h6>${rule.type} Rule for "${rule.column}"</h6>
+                        <p class="mb-1"><strong>Confidence:</strong> ${rule.confidence}%</p>
+                        <p class="mb-1"><strong>Severity:</strong> 
+                            <span class="badge bg-${rule.severity === 'HIGH' ? 'danger' : rule.severity === 'MEDIUM' ? 'warning' : 'info'}">
+                                ${rule.severity}
+                            </span>
+                        </p>
+                        ${rule.params ? `<p class="mb-1"><strong>Parameters:</strong> ${JSON.stringify(rule.params)}</p>` : ''}
+                        <div class="form-check form-switch">
+                            <input class="form-check-input rule-toggle" type="checkbox" id="rule-${index}" checked>
+                            <label class="form-check-label" for="rule-${index}">Include this rule</label>
+                        </div>
+                    </div>
+                </div>
+            `;
+            rulesList.appendChild(ruleCard);
+        });
+    }
+    
+    function saveDatasetAndRules(profile, rules, datasetName) {
+        // Show saving indicator
+        const saveBtn = document.getElementById('save-dataset-btn');
+        const originalHtml = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        saveBtn.disabled = true;
+        
+        // Filter rules based on user selection
+        const selectedRules = [];
+        document.querySelectorAll('.rule-toggle').forEach((toggle, index) => {
+            if (toggle.checked) {
+                selectedRules.push(rules[index]);
+            }
+        });
+        
+        // Send data to server
+        fetch('{% url "datasets:save_enhanced_dataset" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                dataset_name: datasetName,
+                profile: profile,
+                rules: selectedRules
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                analysisContent.innerHTML = `
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <h5><i class="fas fa-check-circle"></i> Dataset and Rules Saved Successfully!</h5>
+                        <p>Dataset "${datasetName}" has been saved with ${data.rules_created} rules.</p>
+                        <p>
+                            <a href="{% url 'datasets:dataset_list' %}" class="btn btn-primary">
+                                <i class="fas fa-database"></i> View Datasets
+                            </a>
+                            <a href="/datasets/${data.dataset_id}/" class="btn btn-success">
+                                <i class="fas fa-chart-line"></i> View Dataset Dashboard
+                            </a>
+                        </p>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    
+                    <div class="card glassmorphic-card mt-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-bar"></i> Final Data Quality Report</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 text-center">
+                                    <div class="quality-badge bg-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 120px; height: 120px;">
+                                        <div>
+                                            <h2 class="mb-0">${Math.round(profiler.calculateQualityScore(profiler.executeRulesLocally()))}%</h2>
+                                            <small>Quality Score</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <h6>Summary</h6>
+                                    <ul>
+                                        <li><strong>Dataset:</strong> ${datasetName}</li>
+                                        <li><strong>Total Rules Created:</strong> ${data.rules_created}</li>
+                                        <li><strong>Columns Analyzed:</strong> ${profile.columnCount}</li>
+                                        <li><strong>Records Processed:</strong> ${profile.rowCount}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                throw new Error(data.error || 'Unknown error occurred');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving dataset:', error);
+            analysisContent.innerHTML = `
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <h5><i class="fas fa-exclamation-triangle"></i> Error Saving Dataset</h5>
+                    <p>${error.message}</p>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button class="btn btn-primary" onclick="location.reload()">Try Again</button>
+                </div>
+            `;
+        })
+        .finally(() => {
+            // Restore button
+            saveBtn.innerHTML = originalHtml;
+            saveBtn.disabled = false;
+        });
+    }
+    
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}

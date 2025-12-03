@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results - Data Quality Watchtower{% endblock %}
+
+{% block page_title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card glassmorphic-card animated fadeInUp">
+            <div class="card-header">
+                <h5><i class="fas fa-search" aria-hidden="true"></i> Search Results for "{{ query }}"</h5>
+                <p class="mb-0">{{ total_results }} result{% if total_results != 1 %}s{% endif %} found</p>
+            </div>
+            <div class="card-body">
+                {% if query %}
+                    {% if total_results > 0 %}
+                        <!-- Datasets Results -->
+                        {% if results.datasets %}
+                        <div class="mb-5">
+                            <h5 class="mb-3"><i class="fas fa-database text-primary" aria-hidden="true"></i> Datasets ({{ results.datasets|length }})</h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Type</th>
+                                            <th scope="col">Owner</th>
+                                            <th scope="col">Rows</th>
+                                            <th scope="col">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for dataset in results.datasets %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'datasets:dataset_detail' dataset.pk %}" aria-label="View dataset {{ dataset.name }}">
+                                                    {{ dataset.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ dataset.get_source_type_display }}</span>
+                                            </td>
+                                            <td>{{ dataset.owner.username }}</td>
+                                            <td>{{ dataset.row_count }}</td>
+                                            <td>
+                                                {% if dataset.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Rules Results -->
+                        {% if results.rules %}
+                        <div class="mb-5">
+                            <h5 class="mb-3"><i class="fas fa-list-check text-warning" aria-hidden="true"></i> Rules ({{ results.rules|length }})</h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Dataset</th>
+                                            <th scope="col">Type</th>
+                                            <th scope="col">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for rule in results.rules %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'rules:rule_detail' rule.pk %}" aria-label="View rule {{ rule.name }}">
+                                                    {{ rule.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'datasets:dataset_detail' rule.dataset.pk %}" aria-label="View dataset {{ rule.dataset.name }}">
+                                                    {{ rule.dataset.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ rule.get_rule_type_display }}</span>
+                                            </td>
+                                            <td>
+                                                {% if rule.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Incidents Results -->
+                        {% if results.incidents %}
+                        <div>
+                            <h5 class="mb-3"><i class="fas fa-exclamation-triangle text-danger" aria-hidden="true"></i> Incidents ({{ results.incidents|length }})</h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Title</th>
+                                            <th scope="col">Dataset</th>
+                                            <th scope="col">Rule</th>
+                                            <th scope="col">Severity</th>
+                                            <th scope="col">Status</th>
+                                            <th scope="col">Created</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for incident in results.incidents %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'incidents:incident_detail' incident.pk %}" aria-label="View incident {{ incident.title }}">
+                                                    {{ incident.title }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'datasets:dataset_detail' incident.dataset.pk %}" aria-label="View dataset {{ incident.dataset.name }}">
+                                                    {{ incident.dataset.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'rules:rule_detail' incident.rule.pk %}" aria-label="View rule {{ incident.rule.name }}">
+                                                    {{ incident.rule.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ incident.severity|lower }}" aria-label="Severity: {{ incident.severity }}">
+                                                    {{ incident.severity }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if incident.status == 'OPEN' %}danger{% elif incident.status == 'ACKNOWLEDGED' %}warning{% elif incident.status == 'RESOLVED' %}success{% else %}secondary{% endif %}" aria-label="Status: {{ incident.status }}">
+                                                    {{ incident.status }}
+                                                </span>
+                                            </td>
+                                            <td>{{ incident.created_at|date:"M d, H:i" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3" aria-hidden="true"></i>
+                            <h5>No results found</h5>
+                            <p class="text-muted">Try adjusting your search terms.</p>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-search fa-3x text-muted mb-3" aria-hidden="true"></i>
+                        <h5>Enter a search term</h5>
+                        <p class="text-muted">Search across datasets, rules, and incidents.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

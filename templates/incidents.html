@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Incidents - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Incidents</h1>
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkActionModal">
+                    <i class="fas fa-tasks"></i> Bulk Actions
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card glass-card">
+                <div class="card-body">
+                    {% if incidents %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="select-all"></th>
+                                    <th>Rule</th>
+                                    <th>Dataset</th>
+                                    <th>State</th>
+                                    <th>Severity</th>
+                                    <th>Description</th>
+                                    <th>Created</th>
+                                    <th>SLA</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for incident in incidents %}
+                                <tr>
+                                    <td><input type="checkbox" class="incident-checkbox" value="{{ incident.id }}"></td>
+                                    <td>{{ incident.rule.name }}</td>
+                                    <td>{{ incident.dataset.name }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if incident.state == 'OPEN' %}danger{% elif incident.state == 'ACK' %}warning{% elif incident.state == 'MUTED' %}secondary{% else %}success{% endif %}">
+                                            {{ incident.get_state_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if incident.severity == 'LOW' %}secondary{% elif incident.severity == 'MEDIUM' %}warning{% elif incident.severity == 'HIGH' %}danger{% else %}critical{% endif %}">
+                                            {{ incident.get_severity_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ incident.description|truncatewords:10 }}</td>
+                                    <td>{{ incident.created_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        {% if incident.sla_breached %}
+                                            <span class="badge bg-danger">Breached</span>
+                                        {% else %}
+                                            <span class="badge bg-success">OK</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'incidents:incident_detail' incident.id %}" class="btn btn-sm btn-outline-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'incidents:update_incident' incident.id %}" class="btn btn-sm btn-outline-primary" title="Update">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x text-muted mb-3"></i>
+                        <h4>No incidents found</h4>
+                        <p class="text-muted">All systems are operating normally.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Action Modal -->
+<div class="modal fade" id="bulkActionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bulk-action-form" method="post" action="{% url 'incidents:bulk_update_incidents' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="incident_ids" id="incident-ids-input">
+                    <div class="mb-3">
+                        <label for="action-select" class="form-label">Select Action</label>
+                        <select class="form-select" id="action-select" name="action" required>
+                            <option value="">Choose an action...</option>
+                            <option value="acknowledge">Acknowledge</option>
+                            <option value="resolve">Resolve</option>
+                            <option value="mute">Mute</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="apply-bulk-action">Apply</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all checkboxes
+    document.getElementById('select-all').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.incident-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+    
+    // Apply bulk action
+    document.getElementById('apply-bulk-action').addEventListener('click', function() {
+        const selectedIds = [];
+        document.querySelectorAll('.incident-checkbox:checked').forEach(checkbox => {
+            selectedIds.push(checkbox.value);
+        });
+        
+        if (selectedIds.length === 0) {
+            alert('Please select at least one incident.');
+            return;
+        }
+        
+        if (!document.getElementById('action-select').value) {
+            alert('Please select an action.');
+            return;
+        }
+        
+        document.getElementById('incident-ids-input').value = selectedIds.join(',');
+        document.getElementById('bulk-action-form').submit();
+    });
+});
+</script>
+{% endblock %}

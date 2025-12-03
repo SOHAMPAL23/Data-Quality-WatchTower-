@@ -1,0 +1,633 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Parse initial data passed from the view with error handling
+let initialQualityTrendData = [];
+let initialRulePassRates = [];
+let refreshIntervalId = null;
+let networkErrorCount = 0;
+const MAX_NETWORK_ERRORS = 3; // Stop trying after 3 consecutive network errors
+
+try {
+    const qualityTrendDataStr = '{{ quality_trend_data|escapejs }}';
+    if (qualityTrendDataStr && qualityTrendDataStr !== 'null' && qualityTrendDataStr !== 'undefined') {
+        initialQualityTrendData = JSON.parse(qualityTrendDataStr);
+    }
+} catch (e) {
+    console.error('Error parsing initial quality trend data:', e);
+    initialQualityTrendData = [];
+}
+
+try {
+    const rulePassRatesStr = '{{ rule_pass_rates|escapejs }}';
+    if (rulePassRatesStr && rulePassRatesStr !== 'null' && rulePassRatesStr !== 'undefined') {
+        initialRulePassRates = JSON.parse(rulePassRatesStr);
+    }
+} catch (e) {
+    console.error('Error parsing initial rule pass rates data:', e);
+    initialRulePassRates = [];
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize charts with initial data immediately
+    initializeCharts(initialQualityTrendData, initialRulePassRates);
+    
+    // Note: Removed AJAX requests to prevent network errors
+    // Charts will display with initial data only
+});
+
+function hideAllLoadingIndicators() {
+    // Hide all loading indicators
+    const loadingElements = [
+        'chart-loading',
+        'rule-rates-loading'
+    ];
+    
+    loadingElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+    
+    // Also hide error indicators if they exist
+    const errorElements = [
+        'chart-error',
+        'rule-rates-error'
+    ];
+    
+    errorElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            // Only hide error messages if we have data to show
+            const emptyElements = [
+                'chart-empty',
+                'rule-rates-empty'
+            ];
+            
+            let hasData = false;
+            for (const emptyId of emptyElements) {
+                const emptyElement = document.getElementById(emptyId);
+                if (emptyElement && emptyElement.style.display !== 'none') {
+                    hasData = true;
+                    break;
+                }
+            }
+            
+            // If we don't have data and we're getting network errors, show a more informative message
+            if (!hasData) {
+                // Check if we have chart instances
+                if (window.trendChartInstance || window.ruleRatesChartInstance) {
+                    // Charts are displayed, so hide error
+                    element.style.display = 'none';
+                }
+            }
+        }
+    });
+}
+
+function initializeCharts(qualityTrendData, rulePassRates) {
+    try {
+        console.log('Initializing charts with initial data:', { qualityTrendData, rulePassRates });
+        
+        // Initialize the quality trend chart with initial data
+        const trendCtx = document.getElementById('qualityTrendChart');
+        if (trendCtx) {
+            const ctx = trendCtx.getContext('2d');
+            if (ctx && qualityTrendData && Array.isArray(qualityTrendData) && qualityTrendData.length > 0) {
+                const dates = qualityTrendData.map(d => d.date);
+                const passedData = qualityTrendData.map(d => d.passed);
+                const failedData = qualityTrendData.map(d => d.failed);
+                
+                // Destroy existing chart if it exists
+                if (window.trendChartInstance) {
+                    window.trendChartInstance.destroy();
+                }
+                
+                window.trendChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [
+                            {
+                                label: 'Passed',
+                                data: passedData,
+                                borderColor: 'rgba(40, 167, 69, 1)',
+                                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'Failed',
+                                data: failedData,
+                                borderColor: 'rgba(220, 53, 69, 1)',
+                                backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                                tension: 0.4,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: '#ffffff'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Show the chart
+                trendCtx.style.display = 'block';
+                const loadingElement = document.getElementById('chart-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            } else {
+                // Display empty message when there's no data
+                console.log('No initial quality trend data available, showing empty message');
+                const emptyElement = document.getElementById('chart-empty');
+                if (emptyElement) {
+                    emptyElement.style.display = 'block';
+                }
+                trendCtx.style.display = 'none';
+                const loadingElement = document.getElementById('chart-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            }
+        }
+        
+        // Initialize rule pass rates chart with initial data
+        initializeRulePassRatesChart(rulePassRates);
+        
+    } catch (error) {
+        console.error('Error initializing charts:', error);
+        const errorElement = document.getElementById('chart-error');
+        if (errorElement) {
+            errorElement.style.display = 'block';
+        }
+        const trendCtx = document.getElementById('qualityTrendChart');
+        if (trendCtx) {
+            trendCtx.style.display = 'none';
+        }
+        const loadingElement = document.getElementById('chart-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+}
+
+function initializeRulePassRatesChart(rulePassRates) {
+    try {
+        const ratesCtx = document.getElementById('rulePassRatesChart');
+        if (ratesCtx) {
+            const ctx = ratesCtx.getContext('2d');
+            if (ctx && rulePassRates && Array.isArray(rulePassRates) && rulePassRates.length > 0) {
+                const ruleNames = rulePassRates.map(r => r.rule_name);
+                const passRates = rulePassRates.map(r => r.pass_rate);
+                
+                // Destroy existing chart if it exists
+                if (window.ruleRatesChartInstance) {
+                    window.ruleRatesChartInstance.destroy();
+                }
+                
+                window.ruleRatesChartInstance = new Chart(ctx, {
+                    type: 'line', // Changed from 'bar' to 'line'
+                    data: {
+                        labels: ruleNames,
+                        datasets: [{
+                            label: 'Pass Rate (%)',
+                            data: passRates,
+                            borderColor: 'rgba(54, 162, 235, 1)', // Blue line
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)', // Light blue fill
+                            pointBackgroundColor: 'rgba(54, 162, 235, 1)', // Blue points
+                            pointBorderColor: '#fff', // White point borders
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            tension: 0.4, // Smooth curves
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    color: '#ffffff',
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#ffffff',
+                                    autoSkip: false,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Show the chart
+                ratesCtx.style.display = 'block';
+                const loadingElement = document.getElementById('rule-rates-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            } else {
+                // Display empty message when there's no data
+                console.log('No initial rule pass rates data available, showing empty message');
+                const emptyElement = document.getElementById('rule-rates-empty');
+                if (emptyElement) {
+                    emptyElement.style.display = 'block';
+                }
+                ratesCtx.style.display = 'none';
+                const loadingElement = document.getElementById('rule-rates-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error initializing rule pass rates chart:', error);
+        const errorElement = document.getElementById('rule-rates-error');
+        if (errorElement) {
+            errorElement.style.display = 'block';
+        }
+        const ratesCtx = document.getElementById('rulePassRatesChart');
+        if (ratesCtx) {
+            ratesCtx.style.display = 'none';
+        }
+        const loadingElement = document.getElementById('rule-rates-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+}
+
+function updateCharts(data) {
+    try {
+        console.log('Updating charts with fresh data:', data);
+        
+        // Hide all status messages
+        const loadingElement = document.getElementById('chart-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+        const errorElement = document.getElementById('chart-error');
+        if (errorElement) {
+            errorElement.style.display = 'none';
+        }
+        const emptyElement = document.getElementById('chart-empty');
+        if (emptyElement) {
+            emptyElement.style.display = 'none';
+        }
+        
+        // Update the quality trend chart with fresh data
+        const trendCtx = document.getElementById('qualityTrendChart');
+        if (!trendCtx) {
+            console.error('Quality trend chart canvas not found');
+            const errorElement = document.getElementById('chart-error');
+            if (errorElement) {
+                errorElement.style.display = 'block';
+            }
+            return;
+        }
+        
+        const ctx = trendCtx.getContext('2d');
+        if (!ctx) {
+            console.error('Could not get 2D context for quality trend chart');
+            const errorElement = document.getElementById('chart-error');
+            if (errorElement) {
+                errorElement.style.display = 'block';
+            }
+            return;
+        }
+        
+        // Destroy existing chart if it exists
+        if (window.trendChartInstance) {
+            window.trendChartInstance.destroy();
+        }
+        
+        if (data.quality_trend_data && Array.isArray(data.quality_trend_data) && data.quality_trend_data.length > 0) {
+            const dates = data.quality_trend_data.map(d => d.date);
+            const passedData = data.quality_trend_data.map(d => d.passed);
+            const failedData = data.quality_trend_data.map(d => d.failed);
+            
+            console.log('Creating chart with data:', { dates, passedData, failedData });
+            
+            window.trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Passed',
+                            data: passedData,
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Failed',
+                            data: failedData,
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#ffffff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#ffffff'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Show the chart
+            trendCtx.style.display = 'block';
+        } else {
+            // Display empty message when there's no data
+            console.log('No quality trend data available, showing empty message');
+            const emptyElement = document.getElementById('chart-empty');
+            if (emptyElement) {
+                emptyElement.style.display = 'block';
+            }
+            trendCtx.style.display = 'none';
+        }
+        
+        // Update rule pass rates chart
+        updateRulePassRatesChart(data);
+        
+        // Update quality metrics
+        if (data.quality_metrics) {
+            console.log('Updating quality metrics:', data.quality_metrics);
+            // Update progress bar
+            const progressBar = document.getElementById('qualityProgressBar');
+            if (progressBar) {
+                const qualityScore = data.quality_metrics.overall_quality_score || 0;
+                progressBar.style.width = qualityScore + '%';
+                progressBar.setAttribute('aria-valuenow', qualityScore);
+                
+                // Update the text content
+                const scoreText = document.getElementById('qualityScoreText');
+                if (scoreText) {
+                    scoreText.textContent = Math.round(qualityScore);
+                }
+            }
+            
+            // Update metrics cards
+            const passedRunsEl = document.querySelector('[data-metric="passed_runs"]');
+            if (passedRunsEl) passedRunsEl.textContent = data.quality_metrics.passed_runs || 0;
+            
+            const failedRunsEl = document.querySelector('[data-metric="failed_runs"]');
+            if (failedRunsEl) failedRunsEl.textContent = data.quality_metrics.failed_runs || 0;
+            
+            const rulesExecutedEl = document.querySelector('[data-metric="rules_executed"]');
+            if (rulesExecutedEl) rulesExecutedEl.textContent = data.quality_metrics.rules_executed || 0;
+            
+            const totalViolationsEl = document.querySelector('[data-metric="total_violations"]');
+            if (totalViolationsEl) totalViolationsEl.textContent = data.quality_metrics.total_violations || 0;
+        }
+    } catch (error) {
+        console.error('Error updating charts:', error);
+        const errorElement = document.getElementById('chart-error');
+        if (errorElement) {
+            errorElement.style.display = 'block';
+        }
+        const trendCtx = document.getElementById('qualityTrendChart');
+        if (trendCtx) {
+            trendCtx.style.display = 'none';
+        }
+    }
+}
+
+function updateRulePassRatesChart(data) {
+    try {
+        // Hide all status messages for rule rates chart
+        const loadingElement = document.getElementById('rule-rates-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+        const errorElement = document.getElementById('rule-rates-error');
+        if (errorElement) {
+            errorElement.style.display = 'none';
+        }
+        const emptyElement = document.getElementById('rule-rates-empty');
+        if (emptyElement) {
+            emptyElement.style.display = 'none';
+        }
+        
+        const ratesCtx = document.getElementById('rulePassRatesChart');
+        if (!ratesCtx) {
+            console.error('Rule pass rates chart canvas not found');
+            const errorElement = document.getElementById('rule-rates-error');
+            if (errorElement) {
+                errorElement.style.display = 'block';
+            }
+            return;
+        }
+        
+        const ctx = ratesCtx.getContext('2d');
+        if (!ctx) {
+            console.error('Could not get 2D context for rule pass rates chart');
+            const errorElement = document.getElementById('rule-rates-error');
+            if (errorElement) {
+                errorElement.style.display = 'block';
+            }
+            return;
+        }
+        
+        // Destroy existing chart if it exists
+        if (window.ruleRatesChartInstance) {
+            window.ruleRatesChartInstance.destroy();
+        }
+        
+        // Check if we have rule pass rates data
+        if (data.rule_pass_rates && Array.isArray(data.rule_pass_rates) && data.rule_pass_rates.length > 0) {
+            const ruleNames = data.rule_pass_rates.map(r => r.rule_name);
+            const passRates = data.rule_pass_rates.map(r => r.pass_rate);
+            
+            console.log('Creating rule pass rates chart with data:', { ruleNames, passRates });
+            
+            window.ruleRatesChartInstance = new Chart(ctx, {
+                type: 'line', // Changed from 'bar' to 'line'
+                data: {
+                    labels: ruleNames,
+                    datasets: [{
+                        label: 'Pass Rate (%)',
+                        data: passRates,
+                        borderColor: 'rgba(54, 162, 235, 1)', // Blue line
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)', // Light blue fill
+                        pointBackgroundColor: 'rgba(54, 162, 235, 1)', // Blue points
+                        pointBorderColor: '#fff', // White point borders
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        tension: 0.4, // Smooth curves
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                color: '#ffffff',
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#ffffff',
+                                autoSkip: false,
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Show the chart
+            ratesCtx.style.display = 'block';
+        } else {
+            // Display empty message when there's no data
+            console.log('No rule pass rates data available, showing empty message');
+            const emptyElement = document.getElementById('rule-rates-empty');
+            if (emptyElement) {
+                emptyElement.style.display = 'block';
+            }
+            ratesCtx.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error updating rule pass rates chart:', error);
+        const errorElement = document.getElementById('rule-rates-error');
+        if (errorElement) {
+            errorElement.style.display = 'block';
+        }
+        const ratesCtx = document.getElementById('rulePassRatesChart');
+        if (ratesCtx) {
+            ratesCtx.style.display = 'none';
+        }
+    }
+}
+
+// Initialize Chart.js defaults
+if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = '#ffffff';
+    Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+}
+
+// Helper function to determine if background is dark
+function isDarkBackground(bgColor) {
+    // Parse rgba or rgb color
+    if (bgColor.startsWith('rgba')) {
+        const match = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (match) {
+            const r = parseInt(match[1]);
+            const g = parseInt(match[2]);
+            const b = parseInt(match[3]);
+            // Calculate brightness (https://www.w3.org/TR/AERT/#color-contrast)
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            return brightness < 128;
+        }
+    } else if (bgColor.startsWith('rgb')) {
+        const match = bgColor.match(/rgb?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (match) {
+            const r = parseInt(match[1]);
+            const g = parseInt(match[2]);
+            const b = parseInt(match[3]);
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            return brightness < 128;
+        }
+    }
+    // Default assumption for glassmorphism backgrounds
+    return true;
+}
+</script>

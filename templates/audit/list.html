@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit Logs{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Audit Logs</h1>
+            <a href="{% url 'audit:export_audit_logs_csv' %}" class="btn btn-success">
+                <i class="fas fa-file-export"></i> Export CSV
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card glassmorphic-card">
+            <div class="card-header">
+                <h5><i class="fas fa-filter"></i> Filter Logs</h5>
+            </div>
+            <div class="card-body">
+                <form method="get">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search_query }}" placeholder="Search logs...">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="action" class="form-label">Action</label>
+                            <select class="form-select" id="action" name="action">
+                                <option value="">All Actions</option>
+                                <option value="CREATE" {% if action_filter == 'CREATE' %}selected{% endif %}>Create</option>
+                                <option value="UPDATE" {% if action_filter == 'UPDATE' %}selected{% endif %}>Update</option>
+                                <option value="DELETE" {% if action_filter == 'DELETE' %}selected{% endif %}>Delete</option>
+                                <option value="READ" {% if action_filter == 'READ' %}selected{% endif %}>Read</option>
+                                <option value="RUN" {% if action_filter == 'RUN' %}selected{% endif %}>Run</option>
+                                <option value="TRIAGE" {% if action_filter == 'TRIAGE' %}selected{% endif %}>Triage</option>
+                                <option value="EXPORT" {% if action_filter == 'EXPORT' %}selected{% endif %}>Export</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="user" class="form-label">User</label>
+                            <select class="form-select" id="user" name="user">
+                                <option value="">All Users</option>
+                                {% for user in users %}
+                                    <option value="{{ user }}" {% if user_filter == user %}selected{% endif %}>{{ user }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" 
+                                   value="{{ date_from }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_to" class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" 
+                                   value="{{ date_to }}">
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <div class="btn-group" role="group">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Filter
+                                </button>
+                                <a href="{% url 'audit:audit_log_list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Clear
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card glassmorphic-card">
+            <div class="card-body">
+                {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Target</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in page_obj %}
+                            <tr>
+                                <td>{{ log.timestamp|date:"M d, Y H:i:s" }}</td>
+                                <td>{{ log.actor.username }}</td>
+                                <td>
+                                    <span class="badge bg-{% if log.action_type == 'CREATE' %}success{% elif log.action_type == 'UPDATE' %}primary{% elif log.action_type == 'DELETE' %}danger{% elif log.action_type == 'READ' %}info{% elif log.action_type == 'RUN' %}info{% elif log.action_type == 'TRIAGE' %}warning{% else %}secondary{% endif %}">
+                                        {{ log.get_action_type_display }}
+                                    </span>
+                                </td>
+                                <td>{{ log.target_type }} #{{ log.target_id }}</td>
+                                <td>
+                                    {% if log.before or log.after %}
+                                        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#details-{{ log.id }}">
+                                            View Details
+                                        </button>
+                                        <div class="collapse mt-2" id="details-{{ log.id }}">
+                                            {% if log.before %}
+                                                <strong>Before:</strong>
+                                                <pre class="small bg-light p-2 rounded text-dark">{{ log.before|pprint }}</pre>
+                                            {% endif %}
+                                            {% if log.after %}
+                                                <strong>After:</strong>
+                                                <pre class="small bg-light p-2 rounded text-dark">{{ log.after|pprint }}</pre>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Audit log pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">&laquo; First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&user={{ user_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Last &raquo;</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                    <h4>No audit logs found</h4>
+                    <p class="text-muted">Audit logs will appear here when actions are performed in the system.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
