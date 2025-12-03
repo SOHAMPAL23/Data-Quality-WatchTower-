@@ -3,8 +3,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from .forms import CustomUserCreationForm
-from apps.audit.utils import create_audit_log
+from .forms import CustomUserCreationForm, CustomAuthenticationForm
+from apps.audit.utils import log_user_login, log_user_logout
 
 
 def register(request):
@@ -14,103 +14,48 @@ def register(request):
             user = form.save()
             username = form.cleaned_data.get('username')
             
-            # Create audit log
-            create_audit_log(
-                actor=user,
-                action_type='CREATE',
-                target_type='User',
-                target_id=user.id,
-                after={
-                    'username': username,
-                    'email': user.email,
-                    'role': user.role
-                },
-                ip_address=request.META.get('REMOTE_ADDR')
-            )
-            
             messages.success(request, f'Account created for {username}!')
             return redirect('users:login')
     else:
         form = CustomUserCreationForm()
-    return render(request, 'users/register.html', {'form': form})
+    # Use the modern template
+    return render(request, 'users/register_modern.html', {'form': form})
 
 
 def user_login(request):
     if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            
-            # Create audit log
-            create_audit_log(
-                actor=user,
-                action_type='RUN',
-                target_type='UserLogin',
-                target_id=user.id,
-                after={
-                    'username': username,
-                    'role': user.role
-                },
-                ip_address=request.META.get('REMOTE_ADDR')
-            )
-            
-            return redirect('dashboard:dashboard_home')
-        else:
-            messages.error(request, 'Invalid username or password')
-    return render(request, 'users/login.html')
-
-
-def viewer_login(request):
-    if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            # Check if user has viewer role
-            if user.role == 'viewer':
+        form = CustomAuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
                 login(request, user)
                 
-                # Create audit log
-                create_audit_log(
-                    actor=user,
-                    action_type='RUN',
-                    target_type='UserLogin',
-                    target_id=user.id,
-                    after={
-                        'username': username,
-                        'role': user.role
-                    },
-                    ip_address=request.META.get('REMOTE_ADDR')
-                )
+                # Log user login activity
+                log_user_login(user, request.META.get('REMOTE_ADDR'))
                 
-                return redirect('dashboard:dashboard_home')
+                return redirect('dashboard:enhanced_dashboard')  # Redirect to enhanced dashboard
             else:
-                messages.error(request, 'This login page is for viewers only. Please use the admin login.')
+                messages.error(request, 'Invalid username or password')
         else:
             messages.error(request, 'Invalid username or password')
-    return render(request, 'users/viewer_login.html')
+    else:
+        form = CustomAuthenticationForm()
+    # Use the modern template
+    return render(request, 'users/login_modern.html', {'form': form})
 
+
+# Remove the viewer_login function as it's not needed
 
 @login_required
 def user_logout(request):
-    # Create audit log before logout
-    create_audit_log(
-        actor=request.user,
-        action_type='RUN',
-        target_type='UserLogout',
-        target_id=request.user.id,
-        after={
-            'username': request.user.username,
-            'role': request.user.role
-        },
-        ip_address=request.META.get('REMOTE_ADDR')
-    )
+    # Log user logout activity before logout
+    log_user_logout(request.user, request.META.get('REMOTE_ADDR'))
     
     logout(request)
     messages.info(request, 'You have been logged out.')
-    return redirect('dashboard:dashboard_home')
+    return redirect('dashboard:public_home')
 
 
 @login_required

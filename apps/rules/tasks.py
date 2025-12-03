@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.db import transaction
 from .models import Rule, RuleRun
 from .utils.rule_executor import RuleExecutor
+from .utils.weekday_checker import is_weekday
 from apps.datasets.models import Dataset
 from apps.incidents.models import Incident
 import os
@@ -16,6 +17,10 @@ def run_single_rule_task(rule_id):
     """
     Run a single rule and create evidence.
     """
+    # Check if it's a weekday before running
+    if not is_weekday():
+        return f"Rule execution skipped - Weekend detected. Rule {rule_id} will run on next weekday."
+    
     try:
         rule = Rule.objects.select_related('dataset').get(id=rule_id)
         
@@ -49,6 +54,10 @@ def run_dataset_rules_task(dataset_id):
     """
     Run all active rules for a specific dataset.
     """
+    # Check if it's a weekday before running
+    if not is_weekday():
+        return f"Dataset rule execution skipped - Weekend detected. Dataset {dataset_id} rules will run on next weekday."
+    
     try:
         dataset = Dataset.objects.get(id=dataset_id)
         rules = Rule.objects.filter(dataset=dataset, is_active=True)
@@ -71,6 +80,10 @@ def run_all_rules_task():
     """
     Run all active rules across all datasets.
     """
+    # Check if it's a weekday before running
+    if not is_weekday():
+        return "All rules execution skipped - Weekend detected. Rules will run on next weekday."
+    
     try:
         rules = Rule.objects.filter(is_active=True)
         
@@ -90,6 +103,10 @@ def check_sla_breaches():
     """
     Check for SLA breaches in open incidents.
     """
+    # Check if it's a weekday before running
+    if not is_weekday():
+        return "SLA breach check skipped - Weekend detected. Check will run on next weekday."
+    
     try:
         # Define SLA thresholds (in hours)
         HIGH_SEVERITY_SLA = 2  # 2 hours

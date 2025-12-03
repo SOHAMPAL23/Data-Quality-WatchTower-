@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from .models import Rule, RuleRun
 from .forms import RuleForm
 from apps.datasets.models import Dataset
+from apps.audit.utils import log_rule_update
 
 
 @login_required
@@ -119,10 +120,39 @@ def rule_detail(request, pk):
 def rule_edit(request, pk):
     rule = get_object_or_404(Rule, pk=pk, owner=request.user)
     
+    # Capture the state before update for audit logging
+    before_state = {
+        'name': rule.name,
+        'description': rule.description,
+        'rule_type': rule.rule_type,
+        'dsl_expression': rule.dsl_expression,
+        'severity': rule.severity,
+        'is_active': rule.is_active
+    }
+    
     if request.method == 'POST':
         form = RuleForm(request.POST, instance=rule)
         if form.is_valid():
             rule = form.save()
+            
+            # Log rule update activity
+            after_state = {
+                'name': rule.name,
+                'description': rule.description,
+                'rule_type': rule.rule_type,
+                'dsl_expression': rule.dsl_expression,
+                'severity': rule.severity,
+                'is_active': rule.is_active
+            }
+            
+            log_rule_update(
+                user=request.user,
+                rule=rule,
+                before_state=before_state,
+                after_state=after_state,
+                ip_address=request.META.get('REMOTE_ADDR')
+            )
+            
             messages.success(request, f'Rule "{rule.name}" updated successfully!')
             return redirect('rules:rule_detail', pk=rule.pk)
     else:
@@ -147,8 +177,27 @@ def rule_delete(request, pk):
 @login_required
 def rule_toggle_active(request, pk):
     rule = get_object_or_404(Rule, pk=pk, owner=request.user)
+    
+    # Capture the state before update for audit logging
+    before_state = {
+        'is_active': rule.is_active
+    }
+    
     rule.is_active = not rule.is_active
     rule.save()
+    
+    # Log rule update activity
+    after_state = {
+        'is_active': rule.is_active
+    }
+    
+    log_rule_update(
+        user=request.user,
+        rule=rule,
+        before_state=before_state,
+        after_state=after_state,
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
     
     status = "activated" if rule.is_active else "deactivated"
     messages.success(request, f'Rule "{rule.name}" {status} successfully!')
@@ -214,6 +263,6 @@ def create_rule_from_recommendation(request):
         )
         
         messages.success(request, f'Rule "{rule.name}" created successfully!')
-        return redirect('datasets:dataset_detail', pk=dataset.pk)
+        return redirect('datasets:dataset_detail', pk=dataset_id)
     
-    return redirect('datasets:dataset_list')
+    return redirect('dashboard:dashboard_home')

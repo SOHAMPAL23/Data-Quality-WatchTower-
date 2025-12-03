@@ -3,6 +3,37 @@ from django.conf import settings
 from apps.datasets.models import Dataset
 
 
+class RuleTemplate(models.Model):
+    TEMPLATE_TYPES = [
+        ('MISSING_VALUE', 'Missing Value Check'),
+        ('DUPLICATE_DETECTION', 'Duplicate Detection'),
+        ('OUTLIER_DETECTION', 'Outlier Detection'),
+        ('SCHEMA_VALIDATION', 'Schema Validation'),
+        ('CUSTOM', 'Custom Template'),
+    ]
+    
+    SEVERITY_CHOICES = [
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+    ]
+    
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    template_type = models.CharField(max_length=30, choices=TEMPLATE_TYPES)
+    dsl_template = models.TextField(help_text="DSL template with placeholders like {column_name}")
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='MEDIUM')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.name} ({self.template_type})"
+    
+    class Meta:
+        ordering = ['name']
+
+
 class Rule(models.Model):
     RULE_TYPES = [
         ('NOT_NULL', 'NOT_NULL'),
