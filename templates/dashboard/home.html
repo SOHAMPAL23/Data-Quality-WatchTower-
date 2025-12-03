@@ -1,0 +1,339 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-chart-line"></i> Dashboard Overview</h2>
+        <button class="btn btn-primary" id="refresh-dashboard">
+            <i class="fas fa-sync-alt"></i> Refresh Data
+        </button>
+    </div>
+    
+    <!-- KPI Cards -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card glassmorphic-card kpi-card animated fadeInUp">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-database text-primary"></i> Datasets</h5>
+                    <h2 id="datasets-count">-</h2>
+                    <p class="card-text">Total Active Datasets</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card kpi-card animated fadeInUp" style="animation-delay: 0.1s;">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-list-check text-success"></i> Rules</h5>
+                    <h2 id="rules-count">-</h2>
+                    <p class="card-text">Active Data Rules</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card kpi-card animated fadeInUp" style="animation-delay: 0.2s;">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-exclamation-triangle text-warning"></i> Incidents</h5>
+                    <h2 id="incidents-count">-</h2>
+                    <p class="card-text">Open Incidents</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card kpi-card animated fadeInUp" style="animation-delay: 0.3s;">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-check-circle text-info"></i> Pass Rate</h5>
+                    <h2 id="pass-rate">-%</h2>
+                    <p class="card-text">Overall Quality</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card glassmorphic-card animated fadeInUp">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Rule Execution Trend (Last 7 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="ruleTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card glassmorphic-card animated fadeInUp">
+                <div class="card-header">
+                    <h5><i class="fas fa-exclamation-circle"></i> Incidents by Severity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="severityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Global chart instances
+    let ruleTrendChartInstance = null;
+    let severityChartInstance = null;
+
+    // Refresh dashboard data
+    function refreshDashboard() {
+        loadDashboardData();
+    }
+
+    // Load all dashboard data
+    function loadDashboardData() {
+        loadActiveDatasets();
+        loadActiveRules();
+        loadOpenIncidents();
+        loadPassRate();
+        loadRuleExecutionTrend();
+        loadIncidentsBySeverity();
+    }
+
+    // Load active datasets count
+    function loadActiveDatasets() {
+        fetch("/api/dashboard/active-datasets/")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById("datasets-count").innerHTML = data.count;
+            })
+            .catch(error => {
+                console.error('Error loading active datasets:', error);
+                document.getElementById("datasets-count").innerHTML = "Error";
+            });
+    }
+
+    // Load active rules count
+    function loadActiveRules() {
+        fetch("/api/dashboard/active-rules/")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById("rules-count").innerHTML = data.count;
+            })
+            .catch(error => {
+                console.error('Error loading active rules:', error);
+                document.getElementById("rules-count").innerHTML = "Error";
+            });
+    }
+
+    // Load open incidents count
+    function loadOpenIncidents() {
+        fetch("/api/dashboard/open-incidents/")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById("incidents-count").innerHTML = data.count;
+            })
+            .catch(error => {
+                console.error('Error loading open incidents:', error);
+                document.getElementById("incidents-count").innerHTML = "Error";
+            });
+    }
+
+    // Load pass rate
+    function loadPassRate() {
+        fetch("/api/dashboard/pass-rate/")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById("pass-rate").innerHTML = data.rate + "%";
+            })
+            .catch(error => {
+                console.error('Error loading pass rate:', error);
+                document.getElementById("pass-rate").innerHTML = "Error";
+            });
+    }
+
+    // Load rule execution trend
+    function loadRuleExecutionTrend() {
+        fetch("/api/dashboard/rule-execution-trend/")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return res.json();
+            })
+            .then(data => {
+                // Destroy existing chart if it exists
+                if (ruleTrendChartInstance) {
+                    ruleTrendChartInstance.destroy();
+                }
+
+                const labels = data.map(i => i.date);
+                const values = data.map(i => i.executions);
+
+                ruleTrendChartInstance = new Chart(document.getElementById("ruleTrendChart"), {
+                    type: "line",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: "Executions",
+                            data: values,
+                            borderColor: "#4CC9F0",
+                            pointBackgroundColor: "#4CC9F0",
+                            pointRadius: 4,
+                            tension: 0.3,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Executions'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading rule execution trend:', error);
+            });
+    }
+
+    // Load incidents by severity
+    function loadIncidentsBySeverity() {
+        fetch("/api/dashboard/incidents-severity/")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return res.json();
+            })
+            .then(data => {
+                // Destroy existing chart if it exists
+                if (severityChartInstance) {
+                    severityChartInstance.destroy();
+                }
+
+                // If no data, show a message
+                if (data.length === 0) {
+                    // Create a simple chart with "No data" message
+                    severityChartInstance = new Chart(document.getElementById("severityChart"), {
+                        type: "bar",
+                        data: {
+                            labels: ["No Data"],
+                            datasets: [{
+                                label: 'Incidents',
+                                data: [0],
+                                backgroundColor: ["#CCCCCC"]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Number of Incidents'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                severityChartInstance = new Chart(document.getElementById("severityChart"), {
+                    type: "bar",
+                    data: {
+                        labels: data.map(i => i.severity),
+                        datasets: [{
+                            label: 'Incidents',
+                            data: data.map(i => i.count),
+                            backgroundColor: ["#90BE6D", "#F9C74F", "#F94144"],
+                            borderColor: ["#7BAE5D", "#E9B73F", "#E93134"],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Incidents'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading incidents by severity:', error);
+            });
+    }
+
+    // Initialize dashboard when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboardData();
+        
+        // Add event listener for refresh button
+        document.getElementById("refresh-dashboard").addEventListener("click", () => {
+            loadDashboardData();  
+        });
+    });
+</script>
+{% endblock %}

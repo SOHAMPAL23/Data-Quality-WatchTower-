@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}{{ incident.title }} - Data Quality Watchtower{% endblock %}
+
+{% block page_title %}Incident: {{ incident.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card glassmorphic-card animated fadeInUp">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-exclamation-triangle"></i> {{ incident.title }}</h5>
+                <div>
+                    <a href="{% url 'incidents:incident_evidence' incident.pk %}" class="btn btn-info">
+                        <i class="fas fa-file-alt"></i> View Evidence
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Description</h6>
+                        <p>{{ incident.description }}</p>
+                        
+                        <h6>Details</h6>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Dataset:</strong></td>
+                                <td>
+                                    {% if incident.dataset %}
+                                        <a href="{% url 'datasets:dataset_detail' incident.dataset.pk %}">
+                                            {{ incident.dataset.name }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">No dataset</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Rule:</strong></td>
+                                <td>
+                                    {% if incident.rule %}
+                                        <a href="{% url 'rules:rule_detail' incident.rule.pk %}">
+                                            {{ incident.rule.name }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">No rule</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Severity:</strong></td>
+                                <td>
+                                    <span class="badge bg-{% if incident.severity == 'CRITICAL' %}danger{% elif incident.severity == 'HIGH' %}warning{% elif incident.severity == 'MEDIUM' %}info{% else %}secondary{% endif %}">
+                                        {{ incident.get_severity_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    <span class="badge bg-{% if incident.status == 'OPEN' %}danger{% elif incident.status == 'ACKNOWLEDGED' %}warning{% elif incident.status == 'RESOLVED' %}success{% else %}secondary{% endif %}">
+                                        {{ incident.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>SLA Status:</strong></td>
+                                <td>
+                                    <span class="badge bg-{% if incident.sla_status == 'BREACHED' %}danger{% elif incident.sla_status == 'WARNING' %}warning{% else %}success{% endif %}">
+                                        {{ incident.get_sla_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Assigned To:</strong></td>
+                                <td>
+                                    {% if incident.assigned_to %}
+                                        {{ incident.assigned_to.username }}
+                                    {% else %}
+                                        <span class="text-muted">Unassigned</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created:</strong></td>
+                                <td>{{ incident.created_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Updated:</strong></td>
+                                <td>{{ incident.updated_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            {% if incident.acknowledged_at %}
+                            <tr>
+                                <td><strong>Acknowledged:</strong></td>
+                                <td>{{ incident.acknowledged_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if incident.resolved_at %}
+                            <tr>
+                                <td><strong>Resolved:</strong></td>
+                                <td>{{ incident.resolved_at|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>Update Incident</h6>
+                        <form method="post" id="updateForm">
+                            {% csrf_token %}
+                            {{ form|crispy }}
+                            
+                            <div class="d-grid gap-2 mt-3">
+                                <button type="submit" name="update_incident" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Update Incident
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Comments Section -->
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-comments"></i> Comments</h5>
+                        <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#addCommentForm" aria-expanded="false" aria-controls="addCommentForm">
+                            <i class="fas fa-plus"></i> Add Comment
+                        </button>
+                    </div>
+                    
+                    <div class="collapse mt-3" id="addCommentForm">
+                        <div class="card glassmorphic-card">
+                            <div class="card-body">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    {{ comment_form|crispy }}
+                                    
+                                    <div class="d-grid gap-2 mt-3">
+                                        <button type="submit" name="add_comment" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane"></i> Post Comment
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if comments %}
+                        <div class="mt-3">
+                            {% for comment in comments %}
+                                <div class="card glassmorphic-card mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="card-title">{{ comment.author.username }}</h6>
+                                            <small class="text-muted">{{ comment.created_at|date:"M d, Y H:i" }}</small>
+                                        </div>
+                                        <p class="card-text">{{ comment.content }}</p>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle"></i> No comments yet. Be the first to add one!
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

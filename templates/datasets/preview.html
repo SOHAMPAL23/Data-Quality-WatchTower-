@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load dashboard.dict_extras %}
+
+{% block title %}Dataset Preview - {{ dataset.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>{{ dataset.name }} - Preview</h1>
+            <div>
+                <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">Back to Datasets</a>
+                <a href="{% url 'rules:create_rule' %}?dataset={{ dataset.id }}" class="btn btn-primary">Create Rule</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="row">
+    <div class="col-12">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Dataset Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> {{ dataset.name }}</p>
+                        <p><strong>Type:</strong> {{ dataset.get_source_type_display }}</p>
+                        <p><strong>Rows:</strong> {{ row_count }}</p>
+                        <p><strong>Created:</strong> {{ dataset.created_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Owner:</strong> {{ dataset.owner.username }}</p>
+                        <p><strong>Status:</strong> 
+                            {% if dataset.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </p>
+                        <p><strong>Rules:</strong> {{ dataset.rules.count }}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <a href="{% url 'datasets:run_dataset_rules' dataset.id %}" class="btn btn-success">
+                            <i class="fas fa-play-circle"></i> Run All Rules
+                        </a>
+                        <a href="{% url 'datasets:edit_dataset' dataset.id %}" class="btn btn-warning">Edit Dataset</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if stats %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Column Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Column</th>
+                                <th>Type</th>
+                                <th>Null %</th>
+                                <th>Unique %</th>
+                                <th>Min</th>
+                                <th>Max</th>
+                                <th>Sample Values</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for column, stat in stats.items %}
+                            <tr>
+                                <td><strong>{{ column }}</strong></td>
+                                <td>{{ stat.dtype }}</td>
+                                <td>
+                                    {% if stat.null_percentage < 1 %}
+                                        <span class="text-success">{{ stat.null_percentage }}%</span>
+                                    {% elif stat.null_percentage < 5 %}
+                                        <span class="text-warning">{{ stat.null_percentage }}%</span>
+                                    {% else %}
+                                        <span class="text-danger">{{ stat.null_percentage }}%</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if stat.unique_percentage > 95 %}
+                                        <span class="text-success">{{ stat.unique_percentage }}%</span>
+                                    {% elif stat.unique_percentage > 80 %}
+                                        <span class="text-warning">{{ stat.unique_percentage }}%</span>
+                                    {% else %}
+                                        <span class="text-secondary">{{ stat.unique_percentage }}%</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ stat.min|default:"-" }}</td>
+                                <td>{{ stat.max|default:"-" }}</td>
+                                <td>
+                                    {% for value in stat.sample_values %}
+                                        <span class="badge bg-light text-dark me-1">{{ value }}</span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if preview_data %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-table"></i> Data Preview (First 10 Rows)</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                {% for column in columns %}
+                                <th>{{ column }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in preview_data %}
+                            <tr>
+                                {% for column in columns %}
+                                <td>{{ row|get_item:column }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb"></i> Rule Recommendations</h5>
+            </div>
+            <div class="card-body">
+                <div id="recommendations-container">
+                    <p class="text-muted">Rules are automatically generated for your dataset. Click below to generate additional recommendations based on your data.</p>
+                    <button id="generate-recommendations" class="btn btn-primary">
+                        <i class="fas fa-cogs"></i> Generate Additional Recommendations
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">Back to Datasets</a>
+            <div>
+                <a href="{% url 'datasets:edit_dataset' dataset.id %}" class="btn btn-warning">Edit Dataset</a>
+                <a href="{% url 'rules:create_rule' %}?dataset={{ dataset.id }}" class="btn btn-primary">Create Rule</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to generate recommendations
+    function generateRecommendations() {
+        const button = document.getElementById('generate-recommendations');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        button.disabled = true;
+        
+        fetch('{% url "datasets:get_rule_recommendations" dataset.id %}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'processing') {
+                    // Poll for results
+                    checkRecommendationsStatus();
+                }
+            })
+            .catch(error => {
+                console.error('Error generating recommendations:', error);
+                document.getElementById('recommendations-container').innerHTML = 
+                    '<p class="text-danger">Error generating recommendations. Please try again.</p>';
+                button.innerHTML = originalText;
+                button.disabled = false;
+            });
+    }
+    
+    // Function to check recommendation status
+    function checkRecommendationsStatus() {
+        fetch('/api/datasets/{{ dataset.id }}/recommendations/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'completed') {
+                    displayRecommendations(data.recommendations);
+                } else if (data.status === 'processing') {
+                    // Continue polling
+                    setTimeout(checkRecommendationsStatus, 2000);
+                } else {
+                    document.getElementById('recommendations-container').innerHTML = 
+                        '<p class="text-danger">Error generating recommendations.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking recommendations status:', error);
+                document.getElementById('recommendations-container').innerHTML = 
+                    '<p class="text-danger">Error checking recommendations status.</p>';
+            });
+    }
+    
+    // Function to display recommendations
+    function displayRecommendations(recommendations) {
+        if (!recommendations || recommendations.length === 0) {
+            document.getElementById('recommendations-container').innerHTML = 
+                '<p class="text-muted">No additional recommendations found for this dataset.</p>';
+            return;
+        }
+        
+        let html = `
+            <p>Based on your data, we recommend the following additional rules:</p>
+            <div class="row">
+        `;
+        
+        recommendations.forEach(rec => {
+            html += `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">${rec.type} Check</h6>
+                            <p class="card-text">
+                                <strong>Column:</strong> ${rec.column}<br>
+                                <strong>Confidence:</strong> ${Math.round(rec.confidence)}%
+                            </p>
+                            <form method="post" action="{% url 'rules:create_rule_from_recommendation' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="dataset_id" value="{{ dataset.id }}">
+                                <input type="hidden" name="rule_type" value="${rec.type}">
+                                <input type="hidden" name="column" value="${rec.column}">
+                                <button type="submit" class="btn btn-sm btn-primary">Accept</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="customizeRule('${rec.type}', '${rec.column}')">Customize</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        document.getElementById('recommendations-container').innerHTML = html;
+    }
+    
+    // Function to customize a rule
+    function customizeRule(ruleType, column) {
+        // Redirect to create rule page with pre-filled data
+        window.location.href = `{% url 'rules:create_rule' %}?dataset={{ dataset.id }}&type=${ruleType}&column=${column}`;
+    }
+    
+    // Add event listener to generate button
+    document.getElementById('generate-recommendations')?.addEventListener('click', generateRecommendations);
+});
+</script>
+{% endblock %}

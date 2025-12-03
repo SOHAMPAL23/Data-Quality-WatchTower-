@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Rule Templates - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Rule Templates</h1>
+                <a href="{% url 'rules:rule_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Rules
+                </a>
+            </div>
+            
+            <p class="lead">
+                Use these predefined templates to quickly create data quality rules for your datasets.
+            </p>
+        </div>
+    </div>
+    
+    {% if template_groups %}
+        {% for template_type, templates in template_groups.items %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card glassmorphic-card">
+                        <div class="card-header">
+                            <h5>
+                                {% if template_type == 'MISSING_VALUE' %}
+                                    <i class="fas fa-question-circle text-danger"></i> Missing Value Checks
+                                {% elif template_type == 'DUPLICATE_DETECTION' %}
+                                    <i class="fas fa-copy text-warning"></i> Duplicate Detection
+                                {% elif template_type == 'OUTLIER_DETECTION' %}
+                                    <i class="fas fa-exclamation-triangle text-warning"></i> Outlier Detection
+                                {% elif template_type == 'SCHEMA_VALIDATION' %}
+                                    <i class="fas fa-table text-info"></i> Schema Validation
+                                {% elif template_type == 'CUSTOM' %}
+                                    <i class="fas fa-cog text-primary"></i> Custom Templates
+                                {% endif %}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for template in templates %}
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="card h-100 glassmorphic-card">
+                                            <div class="card-body">
+                                                <h5 class="card-title">{{ template.name }}</h5>
+                                                <p class="card-text">{{ template.description }}</p>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="badge bg-{% if template.severity == 'HIGH' %}danger{% elif template.severity == 'MEDIUM' %}warning{% else %}info{% endif %}">
+                                                        {{ template.get_severity_display }}
+                                                    </span>
+                                                    <a href="{% url 'rules:template_detail' template.id %}" class="btn btn-primary btn-sm">
+                                                        Use Template
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No rule templates available.
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

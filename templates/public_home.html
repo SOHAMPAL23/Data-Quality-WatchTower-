@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Quality Watchtower</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding-top: 20px;
+        }
+        
+        .hero-section {
+            background: var(--primary-gradient);
+            border-radius: 20px;
+            color: white;
+            padding: 3rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-radius: 15px;
+            overflow: hidden;
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        
+        .feature-icon {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .glassmorphic-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+        }
+        
+        .btn-custom {
+            border-radius: 50px;
+            padding: 10px 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary-custom {
+            background: var(--primary-gradient);
+            border: none;
+        }
+        
+        .btn-secondary-custom {
+            background: var(--secondary-gradient);
+            border: none;
+        }
+        
+        .btn-accent-custom {
+            background: var(--accent-gradient);
+            border: none;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.8rem;
+        }
+        
+        .section-title {
+            position: relative;
+            padding-bottom: 15px;
+            margin-bottom: 2rem;
+        }
+        
+        .section-title:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: var(--primary-gradient);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white glassmorphic-card mx-3 mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-tower-watch"></i> Data Quality Watchtower
+            </a>
+            <div class="d-flex">
+                <a href="{% url 'users:login' %}" class="btn btn-outline-primary me-2">Sign In</a>
+                <a href="{% url 'users:register' %}" class="btn btn-primary">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero-section text-center">
+            <h1 class="display-3 fw-bold mb-3">Data Quality Watchtower</h1>
+            <p class="lead fs-4 mb-4">Monitor and ensure the quality of your data with automated rules and real-time incident tracking.</p>
+            <div class="mt-4">
+                <a href="{% url 'users:register' %}" class="btn btn-light btn-custom btn-lg me-3">
+                    <i class="fas fa-user-plus"></i> Get Started
+                </a>
+                <a href="#features" class="btn btn-outline-light btn-custom btn-lg">
+                    <i class="fas fa-chevron-down"></i> Learn More
+                </a>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <section id="features" class="py-5">
+            <h2 class="text-center section-title">Key Features</h2>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100 text-center p-4">
+                        <div class="feature-icon bg-primary text-white">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h5 class="card-title">Dashboard Analytics</h5>
+                        <p class="card-text">Visualize data quality metrics and trends with interactive charts and real-time monitoring.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100 text-center p-4">
+                        <div class="feature-icon bg-success text-white">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h5 class="card-title">Dataset Management</h5>
+                        <p class="card-text">Upload and manage your data sources with automated profiling and quality assessment.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100 text-center p-4">
+                        <div class="feature-icon bg-info text-white">
+                            <i class="fas fa-list-check"></i>
+                        </div>
+                        <h5 class="card-title">Rule Engine</h5>
+                        <p class="card-text">Define custom data quality rules with our intuitive DSL for comprehensive validation.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100 text-center p-4">
+                        <div class="feature-icon bg-warning text-white">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h5 class="card-title">Incident Tracking</h5>
+                        <p class="card-text">Automatically detect and track data quality issues with detailed evidence and resolution workflows.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100 text-center p-4">
+                        <div class="feature-icon bg-secondary text-white">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <h5 class="card-title">Audit History</h5>
+                        <p class="card-text">Comprehensive audit trail of all data quality checks, user actions, and system events.</p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card feature-card h-100 text-center p-4">
+                        <div class="feature-icon bg-accent text-white">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <h5 class="card-title">REST API</h5>
+                        <p class="card-text">Programmatic access to all data quality metrics and functionalities through our robust API.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="py-5 text-center">
+            <div class="glassmorphic-card p-5">
+                <h2 class="mb-4">Ready to Improve Your Data Quality?</h2>
+                <p class="lead mb-4">Join thousands of data professionals who trust Data Quality Watchtower to monitor and improve their data quality.</p>
+                <div class="mt-4">
+                    <a href="{% url 'users:register' %}" class="btn btn-primary-custom btn-custom btn-lg me-3">
+                        <i class="fas fa-rocket"></i> Start Free Trial
+                    </a>
+                    <a href="{% url 'users:login' %}" class="btn btn-secondary-custom btn-custom btn-lg">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-4 mt-5">
+        <div class="container">
+            <p>&copy; 2025 Data Quality Watchtower. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

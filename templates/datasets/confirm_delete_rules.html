@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Delete Rules - {{ dataset.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-exclamation-triangle text-danger"></i> Delete All Rules for Dataset: {{ dataset.name }}</h3>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading">Warning!</h4>
+                    <p>You are about to delete ALL rules associated with the dataset "{{ dataset.name }}". This action cannot be undone.</p>
+                    <hr>
+                    <p class="mb-0">Are you sure you want to proceed?</p>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger">Yes, Delete All Rules</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

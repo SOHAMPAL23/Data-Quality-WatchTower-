@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Evidence Viewer - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Evidence Viewer</h1>
+                <a href="javascript:history.back()" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card glass-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-file-alt"></i> Evidence Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <p><strong>Rule:</strong> {{ rule_run.rule.name }}</p>
+                            <p><strong>Dataset:</strong> {{ rule_run.dataset.name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Run Time:</strong> {{ rule_run.started_at|date:"M d, Y H:i" }}</p>
+                            <p><strong>Status:</strong> 
+                                <span class="badge bg-{% if rule_run.status == 'COMPLETED' %}success{% elif rule_run.status == 'FAILED' %}danger{% else %}secondary{% endif %}">
+                                    {{ rule_run.get_status_display }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="stat-card bg-success text-white">
+                                <i class="fas fa-check-circle"></i>
+                                <h3>{{ rule_run.passed_rows }}</h3>
+                                <p>Passed Rows</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card bg-danger text-white">
+                                <i class="fas fa-times-circle"></i>
+                                <h3>{{ rule_run.failed_rows }}</h3>
+                                <p>Failed Rows</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card bg-info text-white">
+                                <i class="fas fa-list"></i>
+                                <h3>{{ rule_run.total_rows }}</h3>
+                                <p>Total Rows</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if rule_run.evidence_file %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5><i class="fas fa-table"></i> Failed Records Sample</h5>
+                            <p class="text-muted">Showing first 10 failed records</p>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <!-- Headers will be populated by JavaScript -->
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Data will be populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <a href="{{ rule_run.evidence_file.url }}" class="btn btn-primary" target="_blank">
+                                <i class="fas fa-download"></i> Download Full Evidence CSV
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-info-circle"></i> No Evidence Available</h5>
+                                <p>No failed records were found for this rule run, or evidence has not been generated.</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if evidence file exists
+    const evidenceUrl = "{{ rule_run.evidence_file.url|escapejs }}";
+    
+    if (evidenceUrl && evidenceUrl !== '') {
+        // Fetch and display CSV evidence
+        fetch(evidenceUrl)
+            .then(response => response.text())
+            .then(data => {
+                const lines = data.split('\n');
+                if (lines.length > 0) {
+                    // Parse headers
+                    const headers = lines[0].split(',');
+                    const headerRow = document.querySelector('thead tr');
+                    headers.forEach(header => {
+                        const th = document.createElement('th');
+                        th.textContent = header.trim();
+                        headerRow.appendChild(th);
+                    });
+                    
+                    // Parse data rows (show first 10)
+                    const tbody = document.querySelector('tbody');
+                    const maxRows = Math.min(11, lines.length); // 10 rows + 1 header row
+                    for (let i = 1; i < maxRows; i++) {
+                        if (lines[i].trim()) {
+                            const rowData = lines[i].split(',');
+                            const tr = document.createElement('tr');
+                            rowData.forEach(cell => {
+                                const td = document.createElement('td');
+                                td.textContent = cell.trim();
+                                tr.appendChild(td);
+                            });
+                            tbody.appendChild(tr);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading evidence:', error);
+                document.querySelector('.table-responsive').innerHTML = '<div class="alert alert-danger">Error loading evidence data.</div>';
+            });
+    }
+});
+</script>
+{% endblock %}

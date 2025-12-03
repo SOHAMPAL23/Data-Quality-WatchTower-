@@ -1,0 +1,16 @@
+<form method="{{ method|default:'post' }}" {% if action %}action="{{ action }}"{% endif %} class="{{ form_class|default:'row g-3' }}" {% if enctype %}enctype="{{ enctype }}"{% endif %}>
+    {% if method != 'get' %}{% csrf_token %}{% endif %}
+    {{ form_content|safe }}
+    
+    {% if submit_text or cancel_url %}
+    <div class="col-12">
+        {% if submit_text %}
+            <button type="submit" class="btn {{ submit_class|default:'btn-primary' }}">{{ submit_text }}</button>
+        {% endif %}
+        
+        {% if cancel_url %}
+            <a href="{{ cancel_url }}" class="btn {{ cancel_class|default:'btn-secondary' }}">Cancel</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</form>

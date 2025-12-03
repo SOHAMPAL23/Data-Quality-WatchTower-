@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+
+{% block title %}Incident Dashboard - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-exclamation-triangle"></i> Incident Dashboard</h1>
+                <div class="btn-group">
+                    <a href="{% url 'incidents:incident_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-list"></i> List View
+                    </a>
+                    <a href="{% url 'incidents:incident_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create Incident
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card glassmorphic-card text-center">
+                <div class="card-body">
+                    <h3 class="card-title text-primary">{{ total_incidents }}</h3>
+                    <p class="card-text">Total Incidents</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card text-center">
+                <div class="card-body">
+                    <h3 class="card-title text-warning">{{ open_incidents }}</h3>
+                    <p class="card-text">Open Incidents</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card text-center">
+                <div class="card-body">
+                    <h3 class="card-title text-success">{{ resolved_incidents }}</h3>
+                    <p class="card-text">Resolved Incidents</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card glassmorphic-card text-center">
+                <div class="card-body">
+                    <h3 class="card-title text-danger">{{ critical_incidents }}</h3>
+                    <p class="card-text">Critical Incidents</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Incidents by Severity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="severityChart" 
+                                data-critical="{{ severity_counts.CRITICAL|default:0 }}" 
+                                data-high="{{ severity_counts.HIGH|default:0 }}" 
+                                data-medium="{{ severity_counts.MEDIUM|default:0 }}" 
+                                data-low="{{ severity_counts.LOW|default:0 }}"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Incidents by Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="statusChart" 
+                                data-open="{{ status_counts.OPEN|default:0 }}" 
+                                data-acknowledged="{{ status_counts.ACKNOWLEDGED|default:0 }}" 
+                                data-resolved="{{ status_counts.RESOLVED|default:0 }}" 
+                                data-muted="{{ status_counts.MUTED|default:0 }}"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters and Recent Incidents -->
+    <div class="row">
+        <div class="col-lg-3">
+            <div class="card glassmorphic-card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-filter"></i> Filter Incidents</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                {% for status, display in page_obj.object_list.first.STATUS_CHOICES %}
+                                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Severity</label>
+                            <select name="severity" class="form-select">
+                                <option value="">All Severities</option>
+                                {% for severity, display in page_obj.object_list.first.SEVERITY_CHOICES %}
+                                    <option value="{{ severity }}" {% if severity_filter == severity %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Assigned To</label>
+                            <select name="assigned_to" class="form-select">
+                                <option value="">All Users</option>
+                                {% for user in users %}
+                                    <option value="{{ user.id }}" {% if assigned_to_filter == user.id|stringformat:"s" %}selected{% endif %}>{{ user.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter"></i> Apply Filters
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-9">
+            <div class="card glassmorphic-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-clock"></i> Recent Incidents</h5>
+                    <span class="badge bg-primary">{{ recent_incidents|length }} Recent</span>
+                </div>
+                <div class="card-body">
+                    {% if recent_incidents %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Severity</th>
+                                        <th>Status</th>
+                                        <th>Assigned To</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for incident in recent_incidents %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'incidents:incident_detail' incident.pk %}">
+                                                    {{ incident.title }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if incident.severity == 'CRITICAL' %}danger{% elif incident.severity == 'HIGH' %}warning{% elif incident.severity == 'MEDIUM' %}info{% else %}secondary{% endif %}">
+                                                    {{ incident.get_severity_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{% if incident.status == 'OPEN' %}warning{% elif incident.status == 'RESOLVED' %}success{% elif incident.status == 'ACKNOWLEDGED' %}primary{% else %}secondary{% endif %}">
+                                                    {{ incident.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if incident.assigned_to %}
+                                                    {{ incident.assigned_to.username }}
+                                                {% else %}
+                                                    <span class="text-muted">Unassigned</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ incident.created_at|date:"M d, Y H:i" }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-exclamation-triangle fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">No recent incidents found.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get data from HTML attributes
+    const severityCanvas = document.getElementById('severityChart');
+    const severityData = {
+        critical: parseInt(severityCanvas.dataset.critical) || 0,
+        high: parseInt(severityCanvas.dataset.high) || 0,
+        medium: parseInt(severityCanvas.dataset.medium) || 0,
+        low: parseInt(severityCanvas.dataset.low) || 0
+    };
+    
+    const statusCanvas = document.getElementById('statusChart');
+    const statusData = {
+        open: parseInt(statusCanvas.dataset.open) || 0,
+        acknowledged: parseInt(statusCanvas.dataset.acknowledged) || 0,
+        resolved: parseInt(statusCanvas.dataset.resolved) || 0,
+        muted: parseInt(statusCanvas.dataset.muted) || 0
+    };
+    
+    // Severity Chart
+    const severityCtx = severityCanvas.getContext('2d');
+    const severityChart = new Chart(severityCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Critical', 'High', 'Medium', 'Low'],
+            datasets: [{
+                label: 'Incidents',
+                data: [
+                    severityData.critical,
+                    severityData.high,
+                    severityData.medium,
+                    severityData.low
+                ],
+                backgroundColor: [
+                    'rgba(220, 53, 69, 0.7)',
+                    'rgba(255, 193, 7, 0.7)',
+                    'rgba(13, 110, 253, 0.7)',
+                    'rgba(108, 117, 125, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(220, 53, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(13, 110, 253, 1)',
+                    'rgba(108, 117, 125, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+    
+    // Status Chart
+    const statusCtx = statusCanvas.getContext('2d');
+    const statusChart = new Chart(statusCtx, {
+        type: 'pie',
+        data: {
+            labels: ['Open', 'Acknowledged', 'Resolved', 'Muted'],
+            datasets: [{
+                data: [
+                    statusData.open,
+                    statusData.acknowledged,
+                    statusData.resolved,
+                    statusData.muted
+                ],
+                backgroundColor: [
+                    'rgba(255, 193, 7, 0.7)',
+                    'rgba(13, 110, 253, 0.7)',
+                    'rgba(40, 167, 69, 0.7)',
+                    'rgba(108, 117, 125, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(13, 110, 253, 1)',
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(108, 117, 125, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+});
+</script>
+{% endblock %}

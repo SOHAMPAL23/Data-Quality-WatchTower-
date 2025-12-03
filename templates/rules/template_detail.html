@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ template.name }} - Rule Template - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Create Rule from Template: {{ template.name }}</h1>
+                <a href="{% url 'rules:template_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Templates
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card glassmorphic-card mb-4">
+                <div class="card-header">
+                    <h5>Template Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Type:</strong> {{ template.get_template_type_display }}</p>
+                            <p><strong>Severity:</strong> 
+                                <span class="badge bg-{% if template.severity == 'HIGH' %}danger{% elif template.severity == 'MEDIUM' %}warning{% else %}info{% endif %}">
+                                    {{ template.get_severity_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Created:</strong> {{ template.created_at|date:"M d, Y" }}</p>
+                            <p><strong>Last Updated:</strong> {{ template.updated_at|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                    <p><strong>Description:</strong> {{ template.description }}</p>
+                    <div class="alert alert-info">
+                        <strong>DSL Template:</strong> <code>{{ template.dsl_template }}</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5>Create New Rule</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="ruleForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id_for_label }}" class="form-label">Rule Name</label>
+                                    {{ form.name }}
+                                    {% if form.name.errors %}
+                                        <div class="text-danger">{{ form.name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.dataset.id_for_label }}" class="form-label">Dataset</label>
+                                    {{ form.dataset }}
+                                    {% if form.dataset.errors %}
+                                        <div class="text-danger">{{ form.dataset.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <div class="text-danger">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.severity.id_for_label }}" class="form-label">Severity</label>
+                            {{ form.severity }}
+                            {% if form.severity.errors %}
+                                <div class="text-danger">{{ form.severity.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Template-specific fields -->
+                        {% if template.template_type == 'MISSING_VALUE' or template.template_type == 'DUPLICATE_DETECTION' or template.template_type == 'SCHEMA_VALIDATION' %}
+                            <div class="mb-3">
+                                <label for="{{ form.column_name.id_for_label }}" class="form-label">Column Name</label>
+                                {{ form.column_name }}
+                                <div class="form-text">Enter the name of the column to apply this rule to.</div>
+                                {% if form.column_name.errors %}
+                                    <div class="text-danger">{{ form.column_name.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if template.template_type == 'OUTLIER_DETECTION' %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.column_name.id_for_label }}" class="form-label">Column Name</label>
+                                        {{ form.column_name }}
+                                        <div class="form-text">Enter the name of the column to apply this rule to.</div>
+                                        {% if form.column_name.errors %}
+                                            <div class="text-danger">{{ form.column_name.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.min_value.id_for_label }}" class="form-label">Minimum Value</label>
+                                        {{ form.min_value }}
+                                        {% if form.min_value.errors %}
+                                            <div class="text-danger">{{ form.min_value.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.max_value.id_for_label }}" class="form-label">Maximum Value</label>
+                                        {{ form.max_value }}
+                                        {% if form.max_value.errors %}
+                                            <div class="text-danger">{{ form.max_value.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if template.template_type == 'SCHEMA_VALIDATION' %}
+                            <div class="mb-3">
+                                <label for="{{ form.pattern.id_for_label }}" class="form-label">Regex Pattern</label>
+                                {{ form.pattern }}
+                                <div class="form-text">Enter the regular expression pattern for validation.</div>
+                                {% if form.pattern.errors %}
+                                    <div class="text-danger">{{ form.pattern.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if template.template_type == 'CUSTOM' %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.column_name.id_for_label }}" class="form-label">Column Name (Optional)</label>
+                                        {{ form.column_name }}
+                                        {% if form.column_name.errors %}
+                                            <div class="text-danger">{{ form.column_name.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.min_value.id_for_label }}" class="form-label">Min Value (Optional)</label>
+                                        {{ form.min_value }}
+                                        {% if form.min_value.errors %}
+                                            <div class="text-danger">{{ form.min_value.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.max_value.id_for_label }}" class="form-label">Max Value (Optional)</label>
+                                        {{ form.max_value }}
+                                        {% if form.max_value.errors %}
+                                            <div class="text-danger">{{ form.max_value.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.min_length.id_for_label }}" class="form-label">Min Length (Optional)</label>
+                                        {{ form.min_length }}
+                                        {% if form.min_length.errors %}
+                                            <div class="text-danger">{{ form.min_length.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.max_length.id_for_label }}" class="form-label">Max Length (Optional)</label>
+                                        {{ form.max_length }}
+                                        {% if form.max_length.errors %}
+                                            <div class="text-danger">{{ form.max_length.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.pattern.id_for_label }}" class="form-label">Pattern (Optional)</label>
+                                        {{ form.pattern }}
+                                        {% if form.pattern.errors %}
+                                            <div class="text-danger">{{ form.pattern.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'rules:template_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Create Rule
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5>Template Preview</h5>
+                </div>
+                <div class="card-body">
+                    <h6>How this template works:</h6>
+                    <p>This template will generate a rule with the following DSL expression based on your inputs:</p>
+                    <div class="alert alert-light">
+                        <code id="dslPreview">{{ template.dsl_template }}</code>
+                    </div>
+                    <p class="small text-muted">
+                        Fill in the form on the left to customize the parameters for your specific dataset and column.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update DSL preview as user fills form
+    const form = document.getElementById('ruleForm');
+    const dslPreview = document.getElementById('dslPreview');
+    const templateDsl = '{{ template.dsl_template|escapejs }}';
+    
+    if (form && dslPreview) {
+        form.addEventListener('input', function() {
+            const formData = new FormData(form);
+            const params = {};
+            
+            // Collect form values
+            for (const [key, value] of formData.entries()) {
+                params[key] = value;
+            }
+            
+            // Format the DSL template with current values
+            let preview = templateDsl;
+            try {
+                preview = templateDsl.replace(/\{(\w+)\}/g, function(match, key) {
+                    return params[key] || match;
+                });
+            } catch (e) {
+                console.error('Error formatting DSL preview:', e);
+            }
+            
+            dslPreview.textContent = preview;
+        });
+        
+        // Trigger initial preview update
+        form.dispatchEvent(new Event('input'));
+    }
+});
+</script>
+{% endblock %}

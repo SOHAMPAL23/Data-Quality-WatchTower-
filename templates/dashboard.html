@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Data Quality Dashboard</h1>
+        </div>
+    </div>
+    
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card bg-primary text-white">
+                <i class="fas fa-database"></i>
+                <h3>{{ datasets|default:0 }}</h3>
+                <p>Datasets</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success text-white">
+                <i class="fas fa-list"></i>
+                <h3>{{ rules|default:0 }}</h3>
+                <p>Rules</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-warning text-white">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>{{ open_incidents|default:0 }}</h3>
+                <p>Open Incidents</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-info text-white">
+                <i class="fas fa-history"></i>
+                <h3>{{ recent_runs|length|default:0 }}</h3>
+                <p>Recent Runs</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card glass-card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Pass/Fail Trend</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <div id="trendChart" style="width: 100%; height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card glass-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-th"></i> Dataset Quality Heatmap</h5>
+                </div>
+                <div class="card-body">
+                    <div id="heatmap-container" style="width: 100%; height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch dashboard data
+    fetch('{% url "dashboard:dashboard_stats" %}')
+        .then(response => response.json())
+        .then(data => {
+            // Render trend chart
+            renderTrendChart(data.labels, data.pass_counts, data.fail_counts);
+            
+            // Render heatmap
+            renderHeatmap(data.table_stats);
+        })
+        .catch(error => {
+            console.error('Error fetching dashboard data:', error);
+            // Render empty chart with default data
+            renderTrendChart([], [], []);
+            renderHeatmap([]);
+        });
+});
+
+function renderTrendChart(labels, passCounts, failCounts) {
+    const container = d3.select('#trendChart');
+    container.html(''); // Clear previous content
+    
+    // If no data, provide default empty data
+    if (!labels.length) {
+        const now = new Date();
+        labels = [];
+        passCounts = [];
+        failCounts = [];
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i);
+            labels.push(date.toISOString().split('T')[0]);
+            passCounts.push(0);
+            failCounts.push(0);
+        }
+    }
+    
+    // Set dimensions and margins
+    const margin = {top: 20, right: 30, bottom: 40, left: 50};
+    const width = container.node().clientWidth - margin.left - margin.right;
+    const height = 350 - margin.top - margin.bottom;
+    
+    // Create SVG
+    const svg = container.append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom);
+    
+    // Create group element
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Create scales
+    const xScale = d3.scaleBand()
+        .domain(labels)
+        .range([0, width])
+        .padding(0.1);
+    
+    const yScale = d3.scaleLinear()
+        .domain([0, d3.max([...passCounts, ...failCounts])])
+        .nice()
+        .range([height, 0]);
+    
+    // Create axes
+    const xAxis = d3.axisBottom(xScale);
+    const yAxis = d3.axisLeft(yScale);
+    
+    // Add axes to the chart
+    g.append('g')
+        .attr('class', 'x-axis')
+        .attr('transform', `translate(0,${height})`)
+        .call(xAxis)
+        .selectAll('text')
+        .attr('transform', 'rotate(-45)')
+        .style('text-anchor', 'end');
+    
+    g.append('g')
+        .attr('class', 'y-axis')
+        .call(yAxis);
+    
+    // Add axis labels
+    g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', 0 - margin.left)
+        .attr('x', 0 - (height / 2))
+        .attr('dy', '1em')
+        .style('text-anchor', 'middle')
+        .text('Row Count');
+    
+    g.append('text')
+        .attr('transform', `translate(${width / 2}, ${height + margin.bottom})`)
+        .style('text-anchor', 'middle')
+        .text('Date');
+    
+    // Create line generator for passed rows
+    const linePassed = d3.line()
+        .x((d, i) => xScale(labels[i]) + xScale.bandwidth() / 2)
+        .y(d => yScale(d));
+    
+    // Create line generator for failed rows
+    const lineFailed = d3.line()
+        .x((d, i) => xScale(labels[i]) + xScale.bandwidth() / 2)
+        .y(d => yScale(d));
+    
+    // Add passed rows line
+    g.append('path')
+        .datum(passCounts)
+        .attr('fill', 'none')
+        .attr('stroke', 'green')
+        .attr('stroke-width', 2)
+        .attr('d', linePassed);
+    
+    // Add failed rows line
+    g.append('path')
+        .datum(failCounts)
+        .attr('fill', 'none')
+        .attr('stroke', 'red')
+        .attr('stroke-width', 2)
+        .attr('d', lineFailed);
+    
+    // Add legend
+    const legend = g.append('g')
+        .attr('transform', `translate(${width - 150}, 10)`);
+    
+    legend.append('rect')
+        .attr('x', 0)
+        .attr('y', 0)
+        .attr('width', 12)
+        .attr('height', 12)
+        .attr('fill', 'green');
+    
+    legend.append('text')
+        .attr('x', 20)
+        .attr('y', 10)
+        .text('Passed Rows')
+        .attr('font-size', '12px');
+    
+    legend.append('rect')
+        .attr('x', 0)
+        .attr('y', 20)
+        .attr('width', 12)
+        .attr('height', 12)
+        .attr('fill', 'red');
+    
+    legend.append('text')
+        .attr('x', 20)
+        .attr('y', 30)
+        .text('Failed Rows')
+        .attr('font-size', '12px');
+}
+
+function renderHeatmap(tableStats) {
+    const container = document.getElementById('heatmap-container');
+    container.innerHTML = ''; // Clear previous content
+    
+    if (!tableStats || tableStats.length === 0) {
+        container.innerHTML = '<p class="text-center">No data available</p>';
+        return;
+    }
+    
+    // Create SVG container for heatmap
+    const width = container.clientWidth;
+    const height = 300;
+    const margin = {top: 20, right: 20, bottom: 20, left: 20};
+    
+    const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    // Create group element
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Calculate cell dimensions
+    const cellWidth = Math.min(100, (width - margin.left - margin.right) / tableStats.length);
+    const cellHeight = 30;
+    
+    // Create cells for each dataset
+    const cells = g.selectAll('.heatmap-cell')
+        .data(tableStats)
+        .enter()
+        .append('g')
+        .attr('class', 'heatmap-cell')
+        .attr('transform', (d, i) => `translate(${i * cellWidth}, 0)`);
+    
+    // Add rectangles
+    cells.append('rect')
+        .attr('width', cellWidth - 2)
+        .attr('height', cellHeight)
+        .attr('fill', d => {
+            if (d.success_rate < 70) return '#ff6b6b'; // Red for poor quality
+            if (d.success_rate < 90) return '#ffd166'; // Yellow for medium quality
+            return '#06d6a0'; // Green for good quality
+        })
+        .attr('rx', 5) // Rounded corners
+        .attr('ry', 5);
+    
+    // Add dataset names
+    cells.append('text')
+        .attr('x', cellWidth / 2)
+        .attr('y', cellHeight / 2)
+        .attr('dy', '0.35em')
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .text(d => d.name);
+    
+    // Add success rate below each cell
+    cells.append('text')
+        .attr('x', cellWidth / 2)
+        .attr('y', cellHeight + 15)
+        .attr('dy', '0.35em')
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .text(d => `${d.success_rate.toFixed(0)}%`);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+
+{% block title %}Rule Execution Timeline - Data Quality Watchtower{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-history"></i> Rule Execution Timeline</h1>
+                <a href="{% url 'rules:rule_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Rules
+                </a>
+            </div>
+            
+            <p class="lead">
+                Track the execution history of your data quality rules over time.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Filter Form -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-filter"></i> Filter Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="filterForm">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" name="search" 
+                                       placeholder="Search rules or datasets..." value="{{ search_query }}">
+                            </div>
+                            <div class="col-md-2">
+                                <select name="dataset" class="form-select">
+                                    <option value="">All Datasets</option>
+                                    {% for dataset in datasets %}
+                                        <option value="{{ dataset.id }}" {% if dataset_filter == dataset.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ dataset.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select name="rule" class="form-select">
+                                    <option value="">All Rules</option>
+                                    {% for rule in rules %}
+                                        <option value="{{ rule.id }}" {% if rule_filter == rule.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ rule.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select name="status" class="form-select">
+                                    <option value="">All Statuses</option>
+                                    {% for status in statuses %}
+                                        <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                                            {{ status|title }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="btn-group" role="group">
+                                    <button type="submit" class="btn btn-outline-primary">
+                                        <i class="fas fa-filter"></i> Filter
+                                    </button>
+                                    <a href="{% url 'rules:rule_run_timeline' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i> Clear
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timeline -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card glassmorphic-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-stream"></i> Execution History</h5>
+                    <div>
+                        <button id="refreshTimeline" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="timelineContainer">
+                        {% if page_obj %}
+                            <div class="timeline">
+                                {% for run in page_obj %}
+                                    <div class="timeline-item">
+                                        <div class="timeline-marker">
+                                            <div class="marker-icon bg-{{ run.status|lower }}">
+                                                {% if run.status == 'SUCCESS' %}
+                                                    <i class="fas fa-check"></i>
+                                                {% elif run.status == 'FAILURE' %}
+                                                    <i class="fas fa-times"></i>
+                                                {% elif run.status == 'RUNNING' %}
+                                                    <i class="fas fa-spinner fa-spin"></i>
+                                                {% else %}
+                                                    <i class="fas fa-question"></i>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="timeline-content">
+                                            <div class="card glassmorphic-card mb-0">
+                                                <div class="card-body">
+                                                    <div class="d-flex justify-content-between">
+                                                        <h6 class="mb-1">
+                                                            <a href="{% url 'rules:rule_detail' run.rule.id %}">{{ run.rule.name }}</a>
+                                                            <span class="badge bg-{{ run.status|lower }}">{{ run.status }}</span>
+                                                        </h6>
+                                                        <small class="text-muted">{{ run.started_at|date:"M d, Y H:i:s" }}</small>
+                                                    </div>
+                                                    <p class="mb-2">
+                                                        <i class="fas fa-database"></i> 
+                                                        <a href="{% url 'datasets:dataset_detail' run.dataset.id %}">{{ run.dataset.name }}</a>
+                                                    </p>
+                                                    
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <div class="d-flex">
+                                                                <div class="me-3">
+                                                                    <small class="text-muted">Total Rows</small>
+                                                                    <div class="fw-bold">{{ run.total_rows }}</div>
+                                                                </div>
+                                                                <div class="me-3">
+                                                                    <small class="text-muted">Passed</small>
+                                                                    <div class="fw-bold text-success">{{ run.passed_count }}</div>
+                                                                </div>
+                                                                <div>
+                                                                    <small class="text-muted">Failed</small>
+                                                                    <div class="fw-bold text-danger">{{ run.failed_count }}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 text-end">
+                                                            {% if run.finished_at %}
+                                                                <small class="text-muted">
+                                                                    Duration: {{ run.finished_at|timesince:run.started_at }}
+                                                                </small>
+                                                            {% else %}
+                                                                <small class="text-muted">
+                                                                    Still running...
+                                                                </small>
+                                                            {% endif %}
+                                                            
+                                                            {% if run.incident %}
+                                                                <div class="mt-2">
+                                                                    <a href="{% url 'incidents:incident_detail' run.incident.id %}" 
+                                                                       class="btn btn-sm btn-outline-danger">
+                                                                        <i class="fas fa-exclamation-triangle"></i> Incident #{{ run.incident.id }}
+                                                                    </a>
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <!-- Pagination -->
+                            {% if page_obj.has_other_pages %}
+                                <nav aria-label="Timeline pagination">
+                                    <ul class="pagination justify-content-center">
+                                        {% if page_obj.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if dataset_filter %}&dataset={{ dataset_filter }}{% endif %}{% if rule_filter %}&rule={{ rule_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Previous</a>
+                                            </li>
+                                        {% endif %}
+                                        
+                                        {% for num in page_obj.paginator.page_range %}
+                                            {% if page_obj.number == num %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ num }}</span>
+                                                </li>
+                                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if dataset_filter %}&dataset={{ dataset_filter }}{% endif %}{% if rule_filter %}&rule={{ rule_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                        
+                                        {% if page_obj.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if dataset_filter %}&dataset={{ dataset_filter }}{% endif %}{% if rule_filter %}&rule={{ rule_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next</a>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            {% endif %}
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                                <h5>No rule executions found</h5>
+                                <p class="text-muted">Rule executions will appear here after rules are run.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.marker-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.bg-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+.timeline-content {
+    margin-left: 20px;
+}
+
+.card.glassmorphic-card {
+    transition: all 0.3s ease;
+}
+
+.card.glassmorphic-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Refresh timeline button
+    const refreshButton = document.getElementById('refreshTimeline');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            const originalClass = icon.className;
+            icon.className = 'fas fa-spinner fa-spin';
+            
+            // Reload the page after a short delay
+            setTimeout(function() {
+                window.location.reload();
+            }, 500);
+        });
+    }
+    
+    // Auto-refresh every 30 seconds if on the first page
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page') || '1';
+    
+    if (page === '1') {
+        setInterval(function() {
+            // Only refresh if user is still on the page
+            if (!document.hidden) {
+                fetch('{% url "rules:rule_run_timeline_api" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        // In a real implementation, we would update the timeline dynamically
+                        // For now, we'll just show a notification
+                        console.log('Timeline updated with', data.count, 'items');
+                    })
+                    .catch(error => {
+                        console.error('Error refreshing timeline:', error);
+                    });
+            }
+        }, 30000); // 30 seconds
+    }
+});
+</script>
+{% endblock %}
