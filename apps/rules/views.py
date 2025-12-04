@@ -263,6 +263,6 @@ def create_rule_from_recommendation(request):
         )
         
         messages.success(request, f'Rule "{rule.name}" created successfully!')
-        return redirect('datasets:dataset_detail', pk=dataset_id)
+        return redirect('datasets:dataset_list')
     
     return redirect('dashboard:dashboard_home')
