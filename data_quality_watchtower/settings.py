@@ -33,6 +33,9 @@ RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
+# Custom User Model
+AUTH_USER_MODEL = 'users.User'
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -51,7 +54,7 @@ INSTALLED_APPS = [
     'apps.api',
     'apps.audit',
     'apps.users',
-    'apps.notifications',  # Add this line
+    'apps.notifications',
     'django_celery_beat',
 ]
 
@@ -83,7 +86,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'apps.notifications.context_processors.notifications_processor',  # Add this line
+                'apps.notifications.context_processors.notifications_processor',
             ],
         },
     },
@@ -243,6 +246,5 @@ SITE_URL = 'http://localhost:8000'  # Change this in production
 
 # Login URL
 LOGIN_URL = '/users/login/'
-
-# Custom User Model
-AUTH_USER_MODEL = 'users.User'
+LOGIN_REDIRECT_URL = 'dashboard:enhanced_dashboard'
+LOGOUT_REDIRECT_URL = 'dashboard:public_home'

@@ -1,9 +1,10 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 from .models import Notification, NotificationPreference
-from apps.users.models import User
 
+User = get_user_model()
 
 def create_notification(recipient, notification_type, title, message, actor=None, 
                        rule=None, rule_run=None, incident=None, dataset=None):

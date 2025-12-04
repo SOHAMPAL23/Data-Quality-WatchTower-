@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -11,6 +11,8 @@ import json
 
 def public_home(request):
     """Public home page that doesn't require authentication"""
+    if request.user.is_authenticated:
+        return redirect('dashboard:enhanced_dashboard')
     return render(request, 'public_home.html')
 
 def enhanced_dashboard(request):
