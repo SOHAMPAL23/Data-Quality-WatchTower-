@@ -214,6 +214,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Get data from HTML attributes
     const severityCanvas = document.getElementById('severityChart');
+    const statusCanvas = document.getElementById('statusChart');
+    
+    // Check if elements exist before proceeding
+    if (!severityCanvas || !statusCanvas) {
+        console.warn('Chart elements not found, skipping chart initialization');
+        return;
+    }
+    
     const severityData = {
         critical: parseInt(severityCanvas.dataset.critical) || 0,
         high: parseInt(severityCanvas.dataset.high) || 0,
@@ -221,7 +229,6 @@ document.addEventListener('DOMContentLoaded', function() {
         low: parseInt(severityCanvas.dataset.low) || 0
     };
     
-    const statusCanvas = document.getElementById('statusChart');
     const statusData = {
         open: parseInt(statusCanvas.dataset.open) || 0,
         acknowledged: parseInt(statusCanvas.dataset.acknowledged) || 0,

@@ -30,7 +30,7 @@
                                 <td><strong>Dataset:</strong></td>
                                 <td>
                                     {% if incident.dataset %}
-                                        <a href="{% url 'datasets:dataset_detail' incident.dataset.pk %}">
+                                        <a href="{% url 'datasets:dataset_list' %}">
                                             {{ incident.dataset.name }}
                                         </a>
                                     {% else %}

@@ -96,7 +96,7 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <a href="{% url 'datasets:dataset_detail' incident.dataset.pk %}" aria-label="View dataset {{ incident.dataset.name }}">
+                                                <a href="{% url 'datasets:dataset_list' %}" aria-label="View dataset {{ incident.dataset.name }}">
                                                     {{ incident.dataset.name }}
                                                 </a>
                                             </td>
@@ -237,27 +237,30 @@
         const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
         const bulkUpdateForm = document.getElementById('bulkUpdateForm');
         
-        // Select all checkboxes
-        selectAll.addEventListener('change', function() {
+        // Check if elements exist before adding event listeners
+        if (selectAll && selectItems.length > 0 && bulkUpdateBtn) {
+            // Select all checkboxes
+            selectAll.addEventListener('change', function() {
+                selectItems.forEach(item => {
+                    item.checked = this.checked;
+                });
+                bulkUpdateBtn.disabled = !this.checked;
+            });
+            
+            // Enable/disable bulk update button
             selectItems.forEach(item => {
-                item.checked = this.checked;
+                item.addEventListener('change', function() {
+                    const checkedItems = document.querySelectorAll('.select-item:checked');
+                    bulkUpdateBtn.disabled = checkedItems.length === 0;
+                });
             });
-            bulkUpdateBtn.disabled = !this.checked;
-        });
-        
-        // Enable/disable bulk update button
-        selectItems.forEach(item => {
-            item.addEventListener('change', function() {
-                const checkedItems = document.querySelectorAll('.select-item:checked');
-                bulkUpdateBtn.disabled = checkedItems.length === 0;
+            
+            // Show bulk update modal
+            bulkUpdateBtn.addEventListener('click', function() {
+                const modal = new bootstrap.Modal(document.getElementById('bulkUpdateModal'));
+                modal.show();
             });
-        });
-        
-        // Show bulk update modal
-        bulkUpdateBtn.addEventListener('click', function() {
-            const modal = new bootstrap.Modal(document.getElementById('bulkUpdateModal'));
-            modal.show();
-        });
+        }
     });
 </script>
 {% endblock %}

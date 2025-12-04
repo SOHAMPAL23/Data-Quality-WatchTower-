@@ -1,24 +1,25 @@
 {% extends 'base.html' %}
 
-{% block title %}Audit Logs{% endblock %}
+{% block title %}Audit Logs - Data Quality Watchtower{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>Audit Logs</h1>
-            <a href="{% url 'audit:export_audit_logs_csv' %}" class="btn btn-success">
-                <i class="fas fa-file-export"></i> Export CSV
-            </a>
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="fas fa-clipboard-list me-3"></i>Audit Logs</h1>
+            <p class="text-muted">Track all system activities and user actions</p>
         </div>
+        <a href="{% url 'audit:export_audit_logs_csv' %}" class="btn btn-success btn-lg">
+            <i class="fas fa-file-export me-2"></i>Export CSV
+        </a>
     </div>
 </div>
 
 <div class="row">
     <div class="col-12">
-        <div class="card glassmorphic-card">
+        <div class="card glassmorphic-card mb-4">
             <div class="card-header">
-                <h5><i class="fas fa-filter"></i> Filter Logs</h5>
+                <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter Logs</h5>
             </div>
             <div class="card-body">
                 <form method="get">
@@ -53,20 +54,20 @@
                         <div class="col-md-2">
                             <label for="date_from" class="form-label">From Date</label>
                             <input type="date" class="form-control" id="date_from" name="date_from" 
-                                   value="{{ date_from }}">
+                                   value="{% if date_from %}{{ date_from }}{% endif %}">
                         </div>
                         <div class="col-md-2">
                             <label for="date_to" class="form-label">To Date</label>
                             <input type="date" class="form-control" id="date_to" name="date_to" 
-                                   value="{{ date_to }}">
+                                   value="{% if date_to %}{{ date_to }}{% endif %}">
                         </div>
                         <div class="col-md-1 d-flex align-items-end">
-                            <div class="btn-group" role="group">
+                            <div class="btn-group w-100" role="group">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-search"></i> Filter
+                                    <i class="fas fa-search"></i>
                                 </button>
-                                <a href="{% url 'audit:audit_log_list' %}" class="btn btn-secondary">
-                                    <i class="fas fa-times"></i> Clear
+                                <a href="{% url 'audit:audit_log_list' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i>
                                 </a>
                             </div>
                         </div>
@@ -77,49 +78,78 @@
     </div>
 </div>
 
-<div class="row mt-4">
+<div class="row">
     <div class="col-12">
         <div class="card glassmorphic-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Audit Trail</h5>
+                <span class="badge bg-primary">{{ page_obj.paginator.count }} Total Records</span>
+            </div>
             <div class="card-body">
                 {% if page_obj %}
                 <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+                    <table class="table table-hover">
+                        <thead class="table-dark">
                             <tr>
-                                <th>Timestamp</th>
-                                <th>User</th>
-                                <th>Action</th>
-                                <th>Target</th>
-                                <th>Details</th>
+                                <th width="15%">Timestamp</th>
+                                <th width="15%">User</th>
+                                <th width="10%">Action</th>
+                                <th width="20%">Target</th>
+                                <th width="30%">Details</th>
+                                <th width="10%">IP Address</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for log in page_obj %}
                             <tr>
-                                <td>{{ log.timestamp|date:"M d, Y H:i:s" }}</td>
-                                <td>{{ log.actor.username }}</td>
-                                <td>
-                                    <span class="badge bg-{% if log.action_type == 'CREATE' %}success{% elif log.action_type == 'UPDATE' %}primary{% elif log.action_type == 'DELETE' %}danger{% elif log.action_type == 'READ' %}info{% elif log.action_type == 'RUN' %}info{% elif log.action_type == 'TRIAGE' %}warning{% else %}secondary{% endif %}">
+                                <td class="audit-log-timestamp">
+                                    <div class="fw-bold">{{ log.timestamp|date:"M d, Y" }}</div>
+                                    <div class="small text-muted">{{ log.timestamp|date:"H:i:s" }}</div>
+                                </td>
+                                <td class="audit-log-user">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm bg-primary rounded-circle me-2">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <span>{{ log.actor.username }}</span>
+                                    </div>
+                                </td>
+                                <td class="audit-log-action">
+                                    <span class="badge bg-{% if log.action_type == 'CREATE' %}success{% elif log.action_type == 'UPDATE' %}primary{% elif log.action_type == 'DELETE' %}danger{% elif log.action_type == 'READ' %}info{% elif log.action_type == 'RUN' %}warning{% elif log.action_type == 'TRIAGE' %}secondary{% else %}dark{% endif %}">
                                         {{ log.get_action_type_display }}
                                     </span>
                                 </td>
-                                <td>{{ log.target_type }} #{{ log.target_id }}</td>
-                                <td>
+                                <td class="audit-log-target">
+                                    <div class="fw-bold">{{ log.target_type }}</div>
+                                    <div class="small text-muted">#{{ log.target_id }}</div>
+                                </td>
+                                <td class="audit-log-details">
                                     {% if log.before or log.after %}
                                         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#details-{{ log.id }}">
-                                            View Details
+                                            <i class="fas fa-code me-1"></i>View Changes
                                         </button>
                                         <div class="collapse mt-2" id="details-{{ log.id }}">
-                                            {% if log.before %}
-                                                <strong>Before:</strong>
-                                                <pre class="small bg-light p-2 rounded text-dark">{{ log.before|pprint }}</pre>
-                                            {% endif %}
-                                            {% if log.after %}
-                                                <strong>After:</strong>
-                                                <pre class="small bg-light p-2 rounded text-dark">{{ log.after|pprint }}</pre>
-                                            {% endif %}
+                                            <div class="card card-body bg-dark text-white">
+                                                {% if log.before %}
+                                                    <div class="mb-2">
+                                                        <strong class="text-warning">Before:</strong>
+                                                        <pre class="audit-log-pre small p-2 rounded mb-0">{{ log.before|pprint }}</pre>
+                                                    </div>
+                                                {% endif %}
+                                                {% if log.after %}
+                                                    <div>
+                                                        <strong class="text-success">After:</strong>
+                                                        <pre class="audit-log-pre small p-2 rounded mb-0">{{ log.after|pprint }}</pre>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
                                         </div>
+                                    {% else %}
+                                        <span class="text-muted">No changes recorded</span>
                                     {% endif %}
+                                </td>
+                                <td class="audit-log-ip">
+                                    <span class="badge bg-secondary">{{ log.ip_address|default:"N/A" }}</span>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -160,7 +190,7 @@
                 
                 {% else %}
                 <div class="text-center py-5">
-                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                    <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
                     <h4>No audit logs found</h4>
                     <p class="text-muted">Audit logs will appear here when actions are performed in the system.</p>
                 </div>
