@@ -1,7 +1,9 @@
 from django.core.management.base import BaseCommand
 from apps.datasets.models import Dataset
 from apps.rules.models import Rule
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class Command(BaseCommand):
     help = 'Create sample rules for testing'
@@ -11,76 +13,53 @@ class Command(BaseCommand):
         try:
             owner = User.objects.first()
             if not owner:
-                self.stdout.write(
-                    self.style.ERROR('No users found. Please create a user first.')
-                )
+                self.stdout.write(self.style.ERROR('No users found. Please create a user first.'))
                 return
         except User.DoesNotExist:
-            self.stdout.write(
-                self.style.ERROR('No users found. Please create a user first.')
-            )
+            self.stdout.write(self.style.ERROR('No users found. Please create a user first.'))
             return
 
-        # Get the test dataset
-        try:
-            dataset = Dataset.objects.get(name='Test Dataset')
-        except Dataset.DoesNotExist:
-            self.stdout.write(
-                self.style.ERROR('Test Dataset not found. Please create a dataset first.')
-            )
+        # Get test dataset
+        dataset = Dataset.objects.filter(name='Sample Sales Data').first()
+        if not dataset:
+            self.stdout.write(self.style.ERROR('Sample dataset not found. Please run create_sample_data first.'))
             return
 
         # Create sample rules
         rules_data = [
             {
-                'name': 'Email Validation',
-                'description': 'Ensure all emails are valid',
-                'dsl_expression': 'REGEX(email, "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")'
+                'name': 'Price Validation Rule',
+                'description': 'Ensure all prices are positive',
+                'rule_type': 'CUSTOM',
+                'dsl_expression': 'COLUMN_GREATER_THAN("price", 0)',
+                'is_active': True
             },
             {
-                'name': 'Age Range Check',
-                'description': 'Ensure age is between 18 and 65',
-                'dsl_expression': 'IN_RANGE(age, 18, 65)'
+                'name': 'Quantity Validation Rule',
+                'description': 'Ensure all quantities are positive integers',
+                'rule_type': 'CUSTOM',
+                'dsl_expression': 'COLUMN_GREATER_THAN("quantity", 0)',
+                'is_active': True
             },
             {
-                'name': 'Name Not Null',
-                'description': 'Ensure name field is not null',
-                'dsl_expression': 'NOT_NULL(name)'
-            },
-            {
-                'name': 'Unique Email',
-                'description': 'Ensure email addresses are unique',
-                'dsl_expression': 'UNIQUE(email)'
-            },
-            {
-                'name': 'Salary Positive',
-                'description': 'Ensure salary is positive',
-                'dsl_expression': 'IN_RANGE(salary, 1, 1000000)'
+                'name': 'Product Name Completeness Rule',
+                'description': 'Ensure product names are not null',
+                'rule_type': 'CUSTOM',
+                'dsl_expression': 'NOT_NULL("product")',
+                'is_active': True
             }
         ]
 
         created_count = 0
         for rule_data in rules_data:
-            # Check if rule already exists
             if not Rule.objects.filter(name=rule_data['name'], dataset=dataset).exists():
-                rule = Rule.objects.create(
-                    name=rule_data['name'],
-                    description=rule_data['description'],
-                    dataset=dataset,
-                    dsl_expression=rule_data['dsl_expression'],
-                    owner=owner,
-                    is_active=True
-                )
+                rule_data['dataset'] = dataset
+                rule_data['owner'] = owner
+                Rule.objects.create(**rule_data)
                 created_count += 1
-                self.stdout.write(
-                    self.style.SUCCESS(f'Created rule: {rule.name}')
-                )
+                self.stdout.write(self.style.SUCCESS(f'Created rule: {rule_data["name"]}'))
 
         if created_count == 0:
-            self.stdout.write(
-                self.style.WARNING('All sample rules already exist.')
-            )
+            self.stdout.write('All sample rules already exist')
         else:
-            self.stdout.write(
-                self.style.SUCCESS(f'Created {created_count} sample rules.')
-            )
+            self.stdout.write(self.style.SUCCESS(f'Created {created_count} sample rules'))

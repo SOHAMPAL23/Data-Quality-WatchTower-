@@ -2,9 +2,11 @@ import os
 import pandas as pd
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from apps.datasets.models import Dataset
 from apps.rules.models import Rule
+
+User = get_user_model()
 
 class Command(BaseCommand):
     help = 'Create sample data for testing'
@@ -15,51 +17,48 @@ class Command(BaseCommand):
             User.objects.create_user(
                 username='testuser',
                 email='test@example.com',
-                password='testpass123'
+                password='testpass123',
+                role='admin'
             )
             self.stdout.write(self.style.SUCCESS('Created test user (username: testuser, password: testpass123)'))
         else:
             self.stdout.write('Test user already exists')
 
-        # Create test CSV file if it doesn't exist
-        test_csv_path = os.path.join(settings.MEDIA_ROOT, 'datasets', 'test_data.csv')
-        os.makedirs(os.path.dirname(test_csv_path), exist_ok=True)
+        # Create sample dataset
+        test_user = User.objects.get(username='testuser')
         
-        if not os.path.exists(test_csv_path):
-            # Create sample data
-            data = {
-                'id': range(1, 51),
-                'product_name': [f'Product {i}' for i in range(1, 51)],
-                'price': [10.0 + (i * 2.5) for i in range(1, 51)],  # Prices from $10 to $135
-                'category': ['Electronics', 'Clothing', 'Books', 'Home'] * 12 + ['Electronics', 'Clothing', 'Books']
-            }
-            
-            df = pd.DataFrame(data)
-            df.to_csv(test_csv_path, index=False)
-            self.stdout.write(self.style.SUCCESS(f'Created test CSV file at {test_csv_path}'))
-        else:
-            self.stdout.write('Test CSV file already exists')
-
-        # Create test dataset if it doesn't exist
-        if not Dataset.objects.filter(name='Test Product Data').exists():
-            test_user = User.objects.get(username='testuser')
+        # Sample sales data
+        data = {
+            'date': pd.date_range('2023-01-01', periods=50, freq='D'),
+            'product': [f'Product {i%5+1}' for i in range(1, 51)],
+            'quantity': [i for i in range(1, 51)],
+            'price': [10.0 + (i * 2.5) for i in range(1, 51)],  # Prices from $10 to $135
+        }
+        
+        df = pd.DataFrame(data)
+        csv_path = os.path.join(settings.MEDIA_ROOT, 'sample_sales_data.csv')
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        df.to_csv(csv_path, index=False)
+        
+        # Create dataset record
+        if not Dataset.objects.filter(name='Sample Sales Data').exists():
             dataset = Dataset.objects.create(
-                name='Test Product Data',
+                name='Sample Sales Data',
+                description='Sample sales data for testing',
                 source_type='CSV',
+                file=csv_path,
                 owner=test_user,
+                row_count=len(df),
+                column_count=len(df.columns),
+                schema={col: str(dtype) for col, dtype in df.dtypes.items()},
                 is_active=True
             )
-            # Attach the file to the dataset
-            dataset.file.name = 'datasets/test_data.csv'
-            dataset.row_count = 50
-            dataset.column_count = 4
-            dataset.save()
-            self.stdout.write(self.style.SUCCESS('Created test dataset'))
+            self.stdout.write(self.style.SUCCESS(f'Created dataset: {dataset.name}'))
         else:
-            self.stdout.write('Test dataset already exists')
+            self.stdout.write('Sample dataset already exists')
 
         # Create test rules if they don't exist
-        test_dataset = Dataset.objects.filter(name='Test Product Data').first()
+        test_dataset = Dataset.objects.filter(name='Sample Sales Data').first()
         if test_dataset:
             rules_data = [
                 {
