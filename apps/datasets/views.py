@@ -103,7 +103,7 @@ def dataset_create(request):
                     created_rules = _create_rules_from_recommendations(dataset, recommendations, request.user)
                     
                     messages.success(request, f'Dataset "{dataset.name}" created successfully with {len(created_rules)} auto-generated rules!')
-                    return redirect('datasets:dataset_detail', pk=dataset.pk)
+                    return redirect('datasets:dataset_list')
                 except Exception as e:
                     messages.error(request, f'Error processing CSV file: {str(e)}')
                     # Delete the dataset if processing failed
@@ -263,7 +263,7 @@ def dataset_run_rules(request, pk):
     
     messages.success(request, f'Rules execution started for dataset "{dataset.name}". Results will be available shortly.')
     # Redirect back to dataset detail with a flag indicating rules were just run
-    return redirect('datasets:dataset_detail', pk=dataset.pk)
+    return redirect('datasets:dataset_list')
 
 
 @login_required

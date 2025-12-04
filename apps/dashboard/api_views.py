@@ -16,7 +16,7 @@ def dataset_quality_api(request):
         datasets_with_quality = Dataset.objects.annotate(
             total_runs=Count('rule_runs'),
             passed_runs=Count('rule_runs', filter=Q(rule_runs__failed_count=0)),
-            quality_score=Case(
+            calculated_quality_score=Case(  # Renamed from 'quality_score' to avoid conflict
                 When(total_runs=0, then=0),
                 default=(F('passed_runs') * 100.0 / F('total_runs')),
                 output_field=IntegerField()
@@ -25,14 +25,14 @@ def dataset_quality_api(request):
             total_runs__gt=0
         ).values(
             'name', 
-            'quality_score'
-        ).order_by('-quality_score')
+            'calculated_quality_score'  # Updated to use the renamed annotation
+        ).order_by('-calculated_quality_score')  # Updated to use the renamed annotation
         
         # Format data for frontend
         data = [
             {
                 'dataset': dataset['name'],
-                'quality': round(dataset['quality_score'], 2)
+                'quality': round(dataset['calculated_quality_score'], 2)  # Updated to use the renamed annotation
             }
             for dataset in datasets_with_quality
         ]

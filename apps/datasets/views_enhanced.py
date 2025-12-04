@@ -6,10 +6,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 import json
-import pandas as pd
+import uuid
 from .models import Dataset
 from apps.rules.models import Rule, RuleRun
-from apps.incidents.models import Incident
 
 logger = logging.getLogger(__name__)
 
@@ -23,27 +22,34 @@ def enhanced_dataset_upload(request):
 
 
 @csrf_exempt
-@login_required
 def save_enhanced_dataset(request):
     """
     Save dataset and rules from client-side analysis
     """
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
     try:
         # Parse the JSON data
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+            
         dataset_name = data.get('dataset_name')
         profile = data.get('profile')
         rules = data.get('rules')
+        quality_score = data.get('quality_score', 0)
         
         if not dataset_name or not profile or not rules:
             return JsonResponse({'error': 'Missing required data'}, status=400)
         
         # Check if dataset name already exists
         if Dataset.objects.filter(name=dataset_name, owner=request.user).exists():
-            return JsonResponse({'error': 'Dataset with this name already exists'}, status=400)
+            return JsonResponse({'error': 'Dataset with this name already exists. Please choose a different name.'}, status=400)
         
         # Create dataset record (without file since it was processed client-side)
         dataset = Dataset.objects.create(
@@ -54,6 +60,7 @@ def save_enhanced_dataset(request):
             row_count=profile.get('rowCount', 0),
             column_count=profile.get('columnCount', 0),
             schema=profile.get('columns', {}),
+            quality_score=quality_score,
             is_active=True
         )
         
@@ -87,21 +94,28 @@ def save_enhanced_dataset(request):
         # Create initial rule runs for dashboard visualization
         initial_rule_runs = []
         for rule in Rule.objects.filter(dataset=dataset):
-            rule_run = RuleRun.objects.create(
-                rule=rule,
-                dataset=dataset,
-                run_id=f"initial_run_{rule.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}",
-                started_at=timezone.now(),
-                finished_at=timezone.now(),
-                status='COMPLETED',
-                total_rows=dataset.row_count or 0,
-                passed_count=dataset.row_count or 0,  # Initially assume all pass
-                failed_count=0,
-                sample_evidence=[]
-            )
-            initial_rule_runs.append(rule_run.id)
+            try:
+                # Ensure unique run_id
+                run_id = f"initial_run_{rule.id}_{uuid.uuid4().hex[:8]}"
+                
+                rule_run = RuleRun.objects.create(
+                    rule=rule,
+                    dataset=dataset,
+                    run_id=run_id,
+                    started_at=timezone.now(),
+                    finished_at=timezone.now(),
+                    status='COMPLETED',
+                    total_rows=dataset.row_count or 0,
+                    passed_count=dataset.row_count or 0,  # Initially assume all pass
+                    failed_count=0,
+                    sample_evidence=[]
+                )
+                initial_rule_runs.append(rule_run.id)
+            except Exception as e:
+                logger.error(f"Error creating initial rule run: {str(e)}")
+                continue
         
-        print(f"Created {len(initial_rule_runs)} initial rule runs for dataset {dataset.id}")  # Debug log
+        logger.info(f"Created dataset {dataset.id} with {len(created_rules)} rules and {len(initial_rule_runs)} runs")
         
         return JsonResponse({
             'success': True,
