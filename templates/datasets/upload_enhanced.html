@@ -1,96 +1,380 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Enhanced Dataset Upload - Data Quality Watchtower{% endblock %}
+{% block title %}Enhanced Upload - Data Quality Watchtower{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/upload_enhanced.css' %}" rel="stylesheet">
+<style>
+    .upload-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .upload-zone {
+        background: rgba(25, 25, 45, 0.85);
+        backdrop-filter: blur(20px);
+        border: 2px dashed rgba(102, 126, 234, 0.4);
+        border-radius: 24px;
+        padding: 4rem 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .upload-zone::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .upload-zone:hover {
+        border-color: rgba(102, 126, 234, 0.8);
+        transform: translateY(-4px);
+        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.2);
+    }
+
+    .upload-zone:hover::before {
+        opacity: 1;
+    }
+
+    .upload-zone.drag-over {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+        transform: scale(1.02);
+    }
+
+    .upload-icon-wrapper {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        position: relative;
+    }
+
+    .upload-icon-wrapper i {
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .upload-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: white;
+    }
+
+    .upload-subtitle {
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 2rem;
+    }
+
+    .upload-formats {
+        display: inline-flex;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .name-input-section {
+        background: rgba(25, 25, 45, 0.85);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .analysis-card {
+        background: rgba(25, 25, 45, 0.85);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        margin-top: 2rem;
+    }
+
+    .analysis-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+    }
+
+    .analysis-body {
+        padding: 2rem;
+    }
+
+    .progress-container {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        height: 12px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #38ef7d 100%);
+        background-size: 200% 100%;
+        border-radius: 12px;
+        transition: width 0.3s ease;
+        animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+        0% {
+            background-position: 200% 0;
+        }
+
+        100% {
+            background-position: -200% 0;
+        }
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+        transform: translateY(-4px);
+    }
+
+    .stat-card .number {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .stat-card .label {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 0.5rem;
+    }
+
+    .feature-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        transition: all 0.3s;
+    }
+
+    .feature-item:hover {
+        background: rgba(102, 126, 234, 0.1);
+        transform: translateX(4px);
+    }
+
+    .feature-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #667eea;
+    }
+
+    .feature-text h6 {
+        margin: 0;
+        font-weight: 600;
+        color: white;
+    }
+
+    .feature-text small {
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .feature-list {
+            grid-template-columns: 1fr;
+        }
+
+        .upload-zone {
+            padding: 2rem 1rem;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1>Enhanced Dataset Upload</h1>
-                <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Datasets
-                </a>
-            </div>
-        </div>
+<div class="container-fluid px-4">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1><i class="fas fa-magic me-3"></i>Enhanced Upload</h1>
+        <p>Upload and analyze your dataset with AI-powered profiling</p>
     </div>
-    
+
     <div class="row">
-        <div class="col-md-8">
-            <div class="card glassmorphic-card">
-                <div class="card-header">
-                    <h5><i class="fas fa-upload"></i> Upload Dataset</h5>
+        <div class="col-lg-8">
+            <div class="upload-container">
+                <!-- Dataset Name -->
+                <div class="name-input-section">
+                    <label class="form-label" for="dataset-name">
+                        <i class="fas fa-tag me-2"></i>Dataset Name
+                    </label>
+                    <input type="text" class="form-control form-control-lg" id="dataset-name"
+                        placeholder="Enter a unique name for your dataset" required>
                 </div>
-                <div class="card-body">
-                    <form id="upload-form">
-                        <div class="mb-3">
-                            <label for="dataset-name" class="form-label">Dataset Name</label>
-                            <input type="text" class="form-control" id="dataset-name" name="name" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="file-upload" class="form-label">CSV File</label>
-                            <input class="form-control" type="file" id="file-upload" name="file" accept=".csv" required>
-                            <div class="form-text">Upload a CSV file with column headers in the first row.</div>
-                        </div>
-                        
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary" id="upload-btn">
-                                <i class="fas fa-upload"></i> Upload and Analyze
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- Analysis Results Section -->
-            <div class="card glassmorphic-card mt-4" id="analysis-results" style="display: none;">
-                <div class="card-header">
-                    <h5><i class="fas fa-chart-bar"></i> Dataset Analysis Results</h5>
-                </div>
-                <div class="card-body">
-                    <div class="progress mb-3">
-                        <div class="progress-bar" role="progressbar" style="width: 0%;" id="analysis-progress">0%</div>
+
+                <!-- Upload Zone -->
+                <div class="upload-zone" id="drop-zone">
+                    <input type="file" id="file-upload" accept=".csv" style="display: none;">
+
+                    <div class="upload-icon-wrapper">
+                        <i class="fas fa-cloud-upload-alt"></i>
                     </div>
-                    
-                    <div id="analysis-content">
-                        <!-- Analysis results will be displayed here -->
+
+                    <h3 class="upload-title">Drop your CSV file here</h3>
+                    <p class="upload-subtitle">or click to browse from your computer</p>
+
+                    <div class="upload-formats">
+                        <i class="fas fa-file-csv"></i>
+                        <span>CSV files up to 50MB</span>
+                    </div>
+                </div>
+
+                <!-- File Preview -->
+                <div id="file-preview" style="display: none;"></div>
+
+                <!-- Action Buttons -->
+                <div id="action-buttons" class="text-center mt-4" style="display: none;">
+                    <a href="{% url 'datasets:dataset_list' %}" class="btn btn-outline-light btn-lg me-2">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="button" class="btn btn-primary btn-lg" id="upload-and-analyze-btn">
+                        <i class="fas fa-play me-2"></i>Analyze Dataset
+                    </button>
+                </div>
+
+                <!-- Analysis Results -->
+                <div class="analysis-card" id="analysis-results" style="display: none;">
+                    <div class="analysis-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Analysis Results</h5>
+                    </div>
+                    <div class="analysis-body">
+                        <div class="progress-container">
+                            <div class="progress-fill" id="analysis-progress" style="width: 0%;"></div>
+                        </div>
+                        <div id="analysis-content">
+                            <p class="text-center text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Analyzing...
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-4">
-            <div class="card glassmorphic-card">
-                <div class="card-header">
-                    <h5><i class="fas fa-info-circle"></i> Enhanced Upload Features</h5>
+
+        <div class="col-lg-4">
+            <!-- Features Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h6 class="mb-0"><i class="fas fa-sparkles me-2"></i>Smart Features</h6>
                 </div>
                 <div class="card-body">
-                    <h6>Privacy-Preserving Analysis</h6>
-                    <ul>
-                        <li>Data is processed locally in your browser</li>
-                        <li>Raw data never leaves your device</li>
-                        <li>Only metadata and rules are sent to server</li>
-                    </ul>
-                    
-                    <h6>Automatic Profiling</h6>
-                    <ul>
-                        <li>Null count per column</li>
-                        <li>Duplicate ratios</li>
-                        <li>Min/max for numeric fields</li>
-                        <li>Inferred patterns (email/date/phone)</li>
-                        <li>Cardinality for unique detection</li>
-                        <li>Foreign-key hints</li>
-                    </ul>
-                    
-                    <h6>Smart Rule Generation</h6>
-                    <ul>
-                        <li>NOT NULL rules</li>
-                        <li>UNIQUENESS rules</li>
-                        <li>RANGE rules</li>
-                        <li>REGEX pattern rules</li>
-                        <li>FOREIGN KEY rules</li>
+                    <div class="feature-list">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="feature-text">
+                                <h6>Privacy First</h6>
+                                <small>Processed locally</small>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="feature-text">
+                                <h6>Auto Profiling</h6>
+                                <small>Smart analysis</small>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <div class="feature-text">
+                                <h6>Rule Generation</h6>
+                                <small>Auto-create rules</small>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <div class="feature-text">
+                                <h6>Instant Results</h6>
+                                <small>Real-time feedback</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What We Detect -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-search me-2"></i>What We Detect</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Null & duplicate values
+                        </li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Data type inference</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Email/Phone/URL patterns
+                        </li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Statistical summaries</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Quality score calculation
+                        </li>
+                        <li class="mb-0"><i class="fas fa-check-circle text-success me-2"></i>Validation rule
+                            suggestions</li>
                     </ul>
                 </div>
             </div>
@@ -100,344 +384,182 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Include PapaParse for CSV parsing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-
-<!-- Include D3.js for visualizations -->
 <script src="https://d3js.org/d3.v7.min.js"></script>
-
-<!-- Include our dataset profiler -->
-<script src="/static/js/dataset_profiler.js"></script>
+<script src="{% static 'js/drag_drop.js' %}"></script>
+<script src="{% static 'js/dataset_profiler.js' %}"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const uploadForm = document.getElementById('upload-form');
-    const fileUpload = document.getElementById('file-upload');
-    const analysisResults = document.getElementById('analysis-results');
-    const analysisContent = document.getElementById('analysis-content');
-    const analysisProgress = document.getElementById('analysis-progress');
-    
-    // Create profiler instance
-    const profiler = new DatasetProfiler();
-    
-    uploadForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (!fileUpload.files.length) {
-            alert('Please select a file to upload');
-            return;
+    document.addEventListener('DOMContentLoaded', function () {
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-upload');
+        const datasetName = document.getElementById('dataset-name');
+        const analysisResults = document.getElementById('analysis-results');
+        const actionButtons = document.getElementById('action-buttons');
+
+        let selectedFile = null;
+        let profilerInstance = null;
+
+        // Initialize drag-and-drop
+        const uploader = new DragDropUploader('drop-zone', 'file-upload', {
+            acceptedTypes: ['text/csv', '.csv'],
+            maxSize: 50 * 1024 * 1024,
+            onFileSelected: function (file) {
+                selectedFile = file;
+                createFilePreview(file, 'file-preview');
+                actionButtons.style.display = 'block';
+            },
+            onError: function (error) {
+                alert(error);
+            }
+        });
+
+        // Analyze button click
+        document.getElementById('upload-and-analyze-btn').addEventListener('click', function () {
+            if (!datasetName.value) {
+                alert('Please enter a dataset name');
+                datasetName.focus();
+                return;
+            }
+            if (!selectedFile) {
+                alert('Please select a file');
+                return;
+            }
+            analyzeDataset(selectedFile, datasetName.value);
+        });
+
+        function analyzeDataset(file, name) {
+            analysisResults.style.display = 'block';
+            analysisResults.scrollIntoView({ behavior: 'smooth' });
+
+            if (!profilerInstance) {
+                profilerInstance = new DatasetProfiler();
+            }
+
+            updateProgress(10, 'Parsing CSV file...');
+
+            profilerInstance.parseCSV(file)
+                .then(() => {
+                    updateProgress(40, 'Profiling dataset...');
+                    const profile = profilerInstance.profileDataset();
+
+                    updateProgress(70, 'Generating rules...');
+                    const rules = profilerInstance.generateRules();
+
+                    updateProgress(90, 'Running validation...');
+                    const ruleResults = profilerInstance.executeRulesLocally();
+
+                    updateProgress(100, 'Complete!');
+
+                    displayResults(profile, rules, ruleResults, name);
+                })
+                .catch(error => {
+                    console.error('Analysis error:', error);
+                    document.getElementById('analysis-content').innerHTML =
+                        '<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>Error: ' + error.message + '</div>';
+                });
         }
-        
-        const file = fileUpload.files[0];
-        const datasetName = document.getElementById('dataset-name').value;
-        
-        // Show analysis section
-        analysisResults.style.display = 'block';
-        
-        // Reset progress
-        analysisProgress.style.width = '0%';
-        analysisProgress.textContent = '0%';
-        
-        // Parse CSV file
-        profiler.parseCSV(file)
-            .then(results => {
-                // Update progress
-                analysisProgress.style.width = '30%';
-                analysisProgress.textContent = '30%';
-                
-                // Profile dataset
-                const profile = profiler.profileDataset();
-                
-                // Update progress
-                analysisProgress.style.width = '60%';
-                analysisProgress.textContent = '60%';
-                
-                // Generate rules
-                const rules = profiler.generateRules();
-                
-                // Update progress
-                analysisProgress.style.width = '90%';
-                analysisProgress.textContent = '90%';
-                
-                // Execute rules locally
-                const ruleResults = profiler.executeRulesLocally();
-                
-                // Update progress
-                analysisProgress.style.width = '100%';
-                analysisProgress.textContent = '100%';
-                
-                // Display results
-                displayResults(profile, rules, ruleResults, datasetName);
-                
-                // Create visualizations
-                setTimeout(() => {
-                    profiler.createVisualizations('visualizations-container', ruleResults);
-                }, 500);
-            })
-            .catch(error => {
-                console.error('Error processing dataset:', error);
-                analysisContent.innerHTML = '<div class="alert alert-danger">Error processing dataset: ' + error.message + '</div>';
-            });
-    });
-    
-    function displayResults(profile, rules, ruleResults, datasetName) {
-        let html = `
-            <h5>Dataset Profile: ${datasetName}</h5>
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Rows:</strong> ${profile.rowCount}</p>
-                    <p><strong>Columns:</strong> ${profile.columnCount}</p>
+
+        function updateProgress(percentage, message) {
+            document.getElementById('analysis-progress').style.width = percentage + '%';
+            if (message) {
+                document.getElementById('analysis-content').innerHTML =
+                    '<p class="text-center text-muted"><i class="fas fa-spinner fa-spin me-2"></i>' + message + '</p>';
+            }
+        }
+
+        function displayResults(profile, rules, ruleResults, datasetName) {
+            const qualityScore = profilerInstance.calculateQualityScore(ruleResults);
+
+            document.getElementById('analysis-content').innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="number">${profile.rowCount.toLocaleString()}</div>
+                    <div class="label">Rows</div>
                 </div>
-                <div class="col-md-6">
-                    <p><strong>Generated Rules:</strong> ${rules.length}</p>
-                    <p><strong>Overall Quality Score:</strong> <span id="quality-score">${profiler.calculateQualityScore(ruleResults).toFixed(1)}%</span></p>
+                <div class="stat-card">
+                    <div class="number">${profile.columnCount}</div>
+                    <div class="label">Columns</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">${rules.length}</div>
+                    <div class="label">Rules</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">${Math.round(qualityScore)}%</div>
+                    <div class="label">Quality</div>
                 </div>
             </div>
-            
-            <h6>Column Analysis</h6>
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Column</th>
-                            <th>Data Type</th>
-                            <th>Null %</th>
-                            <th>Unique %</th>
-                            <th>Min/Max</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-        
-        Object.keys(profile.columns).forEach(column => {
-            const col = profile.columns[column];
-            html += `
-                <tr>
-                    <td>${column}</td>
-                    <td>${col.dataType}</td>
-                    <td>${col.nullPercentage.toFixed(1)}%</td>
-                    <td>${col.uniquePercentage.toFixed(1)}%</td>
-                    <td>
-                        ${col.min !== null ? `${col.min} / ${col.max}` : 'N/A'}
-                        ${col.minLength !== null ? `${col.minLength}-${col.maxLength} chars` : ''}
-                    </td>
-                </tr>
-            `;
-        });
-        
-        html += `
-                    </tbody>
-                </table>
-            </div>
-            
-            <h6>Detected Patterns</h6>
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Column</th>
-                            <th>Email %</th>
-                            <th>Phone %</th>
-                            <th>URL %</th>
-                            <th>Date %</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-        
-        Object.keys(profile.patterns).forEach(column => {
-            const patterns = profile.patterns[column];
-            html += `
-                <tr>
-                    <td>${column}</td>
-                    <td>${patterns.email.toFixed(1)}%</td>
-                    <td>${patterns.phone.toFixed(1)}%</td>
-                    <td>${patterns.url.toFixed(1)}%</td>
-                    <td>${patterns.date.toFixed(1)}%</td>
-                </tr>
-            `;
-        });
-        
-        html += `
-                    </tbody>
-                </table>
-            </div>
-            
-            <h6>Recommended Rules</h6>
-            <div id="rules-container">
-                <div class="row" id="rules-list">
-                    <!-- Rules will be displayed here -->
-                </div>
-            </div>
-            
-            <h6>Data Quality Visualizations</h6>
-            <div id="visualizations-container" class="row">
-                <!-- Visualizations will be displayed here -->
-            </div>
-            
-            <div class="mt-4">
-                <button class="btn btn-success" id="save-dataset-btn">
-                    <i class="fas fa-save"></i> Save Dataset and Rules
+            <div class="text-center">
+                <button class="btn btn-success btn-lg" id="save-dataset-btn">
+                    <i class="fas fa-save me-2"></i>Save Dataset & Rules
                 </button>
             </div>
         `;
-        
-        analysisContent.innerHTML = html;
-        
-        // Display rules
-        displayRules(rules);
-        
-        // Add event listeners
-        document.getElementById('save-dataset-btn').addEventListener('click', function() {
-            saveDatasetAndRules(profile, rules, datasetName);
-        });
-    }
-    
-    function displayRules(rules) {
-        const rulesList = document.getElementById('rules-list');
-        rulesList.innerHTML = '';
-        
-        rules.forEach((rule, index) => {
-            const ruleCard = document.createElement('div');
-            ruleCard.className = 'col-md-6 mb-3';
-            ruleCard.innerHTML = `
-                <div class="card glassmorphic-card">
-                    <div class="card-body">
-                        <h6>${rule.type} Rule for "${rule.column}"</h6>
-                        <p class="mb-1"><strong>Confidence:</strong> ${rule.confidence}%</p>
-                        <p class="mb-1"><strong>Severity:</strong> 
-                            <span class="badge bg-${rule.severity === 'HIGH' ? 'danger' : rule.severity === 'MEDIUM' ? 'warning' : 'info'}">
-                                ${rule.severity}
-                            </span>
-                        </p>
-                        ${rule.params ? `<p class="mb-1"><strong>Parameters:</strong> ${JSON.stringify(rule.params)}</p>` : ''}
-                        <div class="form-check form-switch">
-                            <input class="form-check-input rule-toggle" type="checkbox" id="rule-${index}" checked>
-                            <label class="form-check-label" for="rule-${index}">Include this rule</label>
-                        </div>
-                    </div>
-                </div>
-            `;
-            rulesList.appendChild(ruleCard);
-        });
-    }
-    
-    function saveDatasetAndRules(profile, rules, datasetName) {
-        // Show saving indicator
-        const saveBtn = document.getElementById('save-dataset-btn');
-        const originalHtml = saveBtn.innerHTML;
-        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        saveBtn.disabled = true;
-        
-        // Filter rules based on user selection
-        const selectedRules = [];
-        document.querySelectorAll('.rule-toggle').forEach((toggle, index) => {
-            if (toggle.checked) {
-                selectedRules.push(rules[index]);
-            }
-        });
-        
-        // Send data to server
-        fetch('{% url "datasets:save_enhanced_dataset" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                dataset_name: datasetName,
-                profile: profile,
-                rules: selectedRules
+
+            document.getElementById('save-dataset-btn').addEventListener('click', function () {
+                saveDatasetAndRules(profile, rules, datasetName, qualityScore);
+            });
+        }
+
+        function saveDatasetAndRules(profile, rules, datasetName, qualityScore) {
+            const saveBtn = document.getElementById('save-dataset-btn');
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+            saveBtn.disabled = true;
+
+            fetch('{% url "datasets:save_enhanced_dataset" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    dataset_name: datasetName,
+                    profile: profile,
+                    rules: rules,
+                    quality_score: qualityScore
+                })
             })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Show success message
-                analysisContent.innerHTML = `
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <h5><i class="fas fa-check-circle"></i> Dataset and Rules Saved Successfully!</h5>
-                        <p>Dataset "${datasetName}" has been saved with ${data.rules_created} rules.</p>
-                        <p>
-                            <a href="{% url 'datasets:dataset_list' %}" class="btn btn-primary">
-                                <i class="fas fa-database"></i> View Datasets
-                            </a>
-                            <a href="/datasets/${data.dataset_id}/" class="btn btn-success">
-                                <i class="fas fa-chart-line"></i> View Dataset Dashboard
-                            </a>
-                        </p>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    
-                    <div class="card glassmorphic-card mt-4">
-                        <div class="card-header">
-                            <h5><i class="fas fa-chart-bar"></i> Final Data Quality Report</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4 text-center">
-                                    <div class="quality-badge bg-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 120px; height: 120px;">
-                                        <div>
-                                            <h2 class="mb-0">${Math.round(profiler.calculateQualityScore(profiler.executeRulesLocally()))}%</h2>
-                                            <small>Quality Score</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-8">
-                                    <h6>Summary</h6>
-                                    <ul>
-                                        <li><strong>Dataset:</strong> ${datasetName}</li>
-                                        <li><strong>Total Rules Created:</strong> ${data.rules_created}</li>
-                                        <li><strong>Columns Analyzed:</strong> ${profile.columnCount}</li>
-                                        <li><strong>Records Processed:</strong> ${profile.rowCount}</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                throw new Error(data.error || 'Unknown error occurred');
-            }
-        })
-        .catch(error => {
-            console.error('Error saving dataset:', error);
-            analysisContent.innerHTML = `
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <h5><i class="fas fa-exclamation-triangle"></i> Error Saving Dataset</h5>
-                    <p>${error.message}</p>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    <button class="btn btn-primary" onclick="location.reload()">Try Again</button>
-                </div>
-            `;
-        })
-        .finally(() => {
-            // Restore button
-            saveBtn.innerHTML = originalHtml;
-            saveBtn.disabled = false;
-        });
-    }
-    
-    // Helper function to get CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
+                .then(response => {
+                    if (response.status === 401) {
+                        window.location.href = '{% url "users:login" %}?next=' + window.location.pathname;
+                        throw new Error('Authentication required');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '{% url "datasets:dataset_list" %}';
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error'));
+                        saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Dataset & Rules';
+                        saveBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    if (error.message !== 'Authentication required') {
+                        console.error('Save error:', error);
+                        alert('Error: ' + error.message);
+                        saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Dataset & Rules';
+                        saveBtn.disabled = false;
+                    }
+                });
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
                 }
             }
+            return cookieValue;
         }
-        return cookieValue;
-    }
-});
+    });
 </script>
 {% endblock %}

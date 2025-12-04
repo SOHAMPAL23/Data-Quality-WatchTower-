@@ -19,7 +19,7 @@
                     {{ form|crispy }}
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                        <a href="{% url 'datasets:dataset_detail' dataset.pk %}" class="btn btn-secondary me-md-2">
+                        <a href="{% url 'datasets:dataset_list' %}" class="btn btn-secondary me-md-2">
                             <i class="fas fa-times"></i> Cancel
                         </a>
                         <button type="submit" class="btn btn-primary">

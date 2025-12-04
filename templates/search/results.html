@@ -34,7 +34,7 @@
                                         {% for dataset in results.datasets %}
                                         <tr>
                                             <td>
-                                                <a href="{% url 'datasets:dataset_detail' dataset.pk %}" aria-label="View dataset {{ dataset.name }}">
+                                                <a href="{% url 'datasets:dataset_list' %}" aria-label="View dataset {{ dataset.name }}">
                                                     {{ dataset.name }}
                                                 </a>
                                             </td>
@@ -81,7 +81,7 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <a href="{% url 'datasets:dataset_detail' rule.dataset.pk %}" aria-label="View dataset {{ rule.dataset.name }}">
+                                                <a href="{% url 'datasets:dataset_list' %}" aria-label="View dataset {{ rule.dataset.name }}">
                                                     {{ rule.dataset.name }}
                                                 </a>
                                             </td>
@@ -128,7 +128,7 @@
                                                 </a>
                                             </td>
                                             <td>
-                                                <a href="{% url 'datasets:dataset_detail' incident.dataset.pk %}" aria-label="View dataset {{ incident.dataset.name }}">
+                                                <a href="{% url 'datasets:dataset_list' %}" aria-label="View dataset {{ incident.dataset.name }}">
                                                     {{ incident.dataset.name }}
                                                 </a>
                                             </td>
