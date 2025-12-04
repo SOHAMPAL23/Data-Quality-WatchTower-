@@ -10,8 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,13 +21,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-data-quality-watchtower-secret-key-for-development-only'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-local-development-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
+# For Render deployment
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # Application definition
 
@@ -86,12 +91,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'data_quality_watchtower.wsgi.application'
 
-# Login URL
-LOGIN_URL = '/users/login/'
-
-# Custom User Model
-AUTH_USER_MODEL = 'users.User'
-
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
@@ -101,6 +100,14 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# For Render deployment - use PostgreSQL
+if 'DATABASE_URL' in os.environ:
+    DATABASES['default'] = dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 
 # Auto-run migrations on startup
 import os
@@ -152,6 +159,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
+# Enable WhiteNoise compression and caching
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files (Uploaded files)
 MEDIA_URL = '/media/'
@@ -230,3 +240,9 @@ LOGGING = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
 DEFAULT_FROM_EMAIL = 'noreply@dataqualitywatchtower.com'
 SITE_URL = 'http://localhost:8000'  # Change this in production
+
+# Login URL
+LOGIN_URL = '/users/login/'
+
+# Custom User Model
+AUTH_USER_MODEL = 'users.User'

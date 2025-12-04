@@ -145,3 +145,10 @@ media/
 
 # Static files collected by Django
 staticfiles/
+
+# Log files
+logs/
+*.log
+
+# Render deployment files
+.env.render

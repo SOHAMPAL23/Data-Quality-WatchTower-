@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: data-quality-watchtower
+    env: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn data_quality_watchtower.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.6
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: DATABASE_URL
+        fromDatabase:
+          name: data-quality-db
+          property: connectionString
+      - key: RENDER_EXTERNAL_HOSTNAME
+        fromService:
+          type: web
+          name: data-quality-watchtower
+          property: host
+
+databases:
+  - name: data-quality-db
+    plan: free
+    databaseName: data_quality_watchtower_db
