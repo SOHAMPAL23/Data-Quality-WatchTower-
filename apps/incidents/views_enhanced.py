@@ -1,15 +1,13 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.db.models import Q
-from django.utils import timezone
-from .models import Incident, IncidentComment
-from .forms import IncidentUpdateForm, IncidentCommentForm
+from django.contrib.auth import get_user_model
+from django.http import JsonResponse
+from django.db.models import Count, Q
+from .models import Incident
 from apps.rules.models import Rule
 from apps.datasets.models import Dataset
-from django.contrib.auth.models import User
-from django.http import JsonResponse
+
+User = get_user_model()
 
 
 @login_required
