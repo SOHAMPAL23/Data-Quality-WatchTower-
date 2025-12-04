@@ -194,7 +194,7 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-# Logging Configuration
+# Logging Configuration - Console only (suitable for cloud platforms like Render)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -213,25 +213,19 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple'
         },
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'data_quality.log',
-            'formatter': 'verbose',
-        },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console'],
         'level': 'INFO',
     },
     'loggers': {
         'apps.datasets': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'apps.rules': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
