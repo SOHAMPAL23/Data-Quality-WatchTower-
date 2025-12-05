@@ -17,7 +17,40 @@ def public_home(request):
 
 def enhanced_dashboard(request):
     """Enhanced dashboard with modern UI and dynamic charts"""
-    return render(request, 'dashboard/home_enhanced.html')
+    # Get all active datasets
+    datasets = Dataset.objects.filter(is_active=True)
+    dataset_data = []
+    
+    for dataset in datasets:
+        # Get last 10 runs for this dataset
+        runs = RuleRun.objects.filter(rule__dataset=dataset).order_by('-started_at')[:10]
+        
+        # Prepare data for sparkline
+        history = []
+        for run in runs:
+            if run.failed_count == 0:
+                history.append(100)
+            else:
+                total = run.total_rows or 1
+                score = max(0, (total - run.failed_count) / total * 100)
+                history.append(round(score))
+        
+        history.reverse()
+        if not history:
+            history = [0] * 10
+            
+        dataset_data.append({
+            'id': dataset.id,
+            'name': dataset.name,
+            'type': dataset.get_source_type_display(),
+            'history': history,
+            'last_run': runs[0] if runs else None
+        })
+    
+    context = {
+        'dataset_data': dataset_data
+    }
+    return render(request, 'dashboard/home_enhanced.html', context)
 
 
 @login_required
