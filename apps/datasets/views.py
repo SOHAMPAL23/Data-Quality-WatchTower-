@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.utils import timezone
+from django.core.serializers.json import DjangoJSONEncoder
 from .models import Dataset
 from .forms import DatasetForm
 from .utils import analyze_dataset_for_rules
@@ -28,8 +29,34 @@ def dataset_list(request):
     if search_query:
         datasets = datasets.filter(name__icontains=search_query)
     
+    # Add quality trend data for each dataset
+    dataset_data = []
+    for dataset in datasets:
+        # Get last 10 runs for this dataset to create quality trend data
+        runs = RuleRun.objects.filter(rule__dataset=dataset).order_by('-started_at')[:10]
+        
+        # Prepare data for sparkline
+        history = []
+        for run in runs:
+            if run.failed_count == 0:
+                history.append(100)
+            else:
+                total = run.total_rows or 1
+                score = max(0, (total - run.failed_count) / total * 100)
+                history.append(round(score))
+        
+        history.reverse()
+        if not history:
+            history = [0] * 10
+            
+        dataset_data.append({
+            'dataset': dataset,
+            'history': json.dumps(history),  # Serialize to JSON string
+            'last_run': runs[0] if runs else None
+        })
+    
     # Pagination
-    paginator = Paginator(datasets, 10)
+    paginator = Paginator(dataset_data, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
