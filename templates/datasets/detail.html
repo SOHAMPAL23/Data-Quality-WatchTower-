@@ -195,6 +195,39 @@
         </div>
     </div>
     
+    <!-- Per-Dataset Heatmap Visualization -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card glassmorphic-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-th"></i> Data Quality Heatmap</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 400px; position: relative;">
+                        <canvas id="datasetHeatmap" style="display: block; width: 100%; height: 100%;"></canvas>
+                    </div>
+                    <div id="heatmap-loading" class="text-center py-5" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading heatmap data...</p>
+                    </div>
+                    <div id="heatmap-error" class="text-center py-5" style="display: none;">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        <p>Error loading heatmap data. Please try refreshing the page.</p>
+                    </div>
+                    <div id="heatmap-empty" class="text-center py-5" style="display: none;">
+                        <i class="fas fa-th text-muted"></i>
+                        <p>No heatmap data available yet. Run some rules to generate data.</p>
+                        <a href="{% url 'datasets:dataset_run_rules' dataset.pk %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-play"></i> Run All Rules
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Rules Section -->
     <div class="mt-4">
         <div class="d-flex justify-content-between align-items-center">
@@ -373,6 +406,7 @@
 // Parse initial data passed from the view with error handling
 let initialQualityTrendData = [];
 let initialRulePassRates = [];
+let initialHeatmapData = [];
 
 try {
     const qualityTrendDataStr = '{{ quality_trend_data|escapejs }}';
@@ -394,9 +428,23 @@ try {
     initialRulePassRates = [];
 }
 
+try {
+    // Use a safer approach to get heatmap data from the dataset object
+    const heatmapDataElement = document.getElementById('heatmap-data');
+    if (heatmapDataElement) {
+        const heatmapDataStr = heatmapDataElement.textContent;
+        if (heatmapDataStr && heatmapDataStr !== 'null' && heatmapDataStr !== 'undefined') {
+            initialHeatmapData = JSON.parse(heatmapDataStr);
+        }
+    }
+} catch (e) {
+    console.error('Error parsing initial heatmap data:', e);
+    initialHeatmapData = [];
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize charts with initial data immediately
-    initializeCharts(initialQualityTrendData, initialRulePassRates);
+    initializeCharts(initialQualityTrendData, initialRulePassRates, initialHeatmapData);
     
     // Note: Removed AJAX requests to prevent network errors
     // Charts will display with initial data only
@@ -406,7 +454,8 @@ function hideAllLoadingIndicators() {
     // Hide all loading indicators
     const loadingElements = [
         'chart-loading',
-        'rule-rates-loading'
+        'rule-rates-loading',
+        'heatmap-loading'
     ];
     
     loadingElements.forEach(id => {
@@ -419,7 +468,8 @@ function hideAllLoadingIndicators() {
     // Also hide error indicators if they exist
     const errorElements = [
         'chart-error',
-        'rule-rates-error'
+        'rule-rates-error',
+        'heatmap-error'
     ];
     
     errorElements.forEach(id => {
@@ -428,7 +478,8 @@ function hideAllLoadingIndicators() {
             // Only hide error messages if we have data to show
             const emptyElements = [
                 'chart-empty',
-                'rule-rates-empty'
+                'rule-rates-empty',
+                'heatmap-empty'
             ];
             
             let hasData = false;
@@ -443,7 +494,7 @@ function hideAllLoadingIndicators() {
             // If we don't have data and we're getting network errors, show a more informative message
             if (!hasData) {
                 // Check if we have chart instances
-                if (window.trendChartInstance || window.ruleRatesChartInstance) {
+                if (window.trendChartInstance || window.ruleRatesChartInstance || window.heatmapInstance) {
                     // Charts are displayed, so hide error
                     element.style.display = 'none';
                 }
@@ -452,9 +503,9 @@ function hideAllLoadingIndicators() {
     });
 }
 
-function initializeCharts(qualityTrendData, rulePassRates) {
+function initializeCharts(qualityTrendData, rulePassRates, heatmapData) {
     try {
-        console.log('Initializing charts with initial data:', { qualityTrendData, rulePassRates });
+        console.log('Initializing charts with initial data:', { qualityTrendData, rulePassRates, heatmapData });
         
         // Initialize the quality trend chart with initial data
         const trendCtx = document.getElementById('qualityTrendChart');
@@ -549,6 +600,9 @@ function initializeCharts(qualityTrendData, rulePassRates) {
         
         // Initialize rule pass rates chart with initial data
         initializeRulePassRatesChart(rulePassRates);
+        
+        // Initialize heatmap chart with initial data
+        initializeHeatmapChart(heatmapData);
         
     } catch (error) {
         console.error('Error initializing charts:', error);
@@ -673,6 +727,154 @@ function initializeRulePassRatesChart(rulePassRates) {
     }
 }
 
+function initializeHeatmapChart(heatmapData) {
+    try {
+        const heatmapCtx = document.getElementById('datasetHeatmap');
+        if (heatmapCtx) {
+            const ctx = heatmapCtx.getContext('2d');
+            if (ctx && heatmapData && Array.isArray(heatmapData) && heatmapData.length > 0) {
+                // Extract rule names and pass percentages for heatmap
+                const ruleNames = heatmapData.map(item => item.rule_name);
+                const passPercentages = heatmapData.map(item => item.pass_percentage);
+                
+                // Create a single row for the heatmap (representing overall dataset)
+                const labels = ['Dataset Quality'];
+                
+                // Destroy existing chart if it exists
+                if (window.heatmapInstance) {
+                    window.heatmapInstance.destroy();
+                }
+                
+                window.heatmapInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: heatmapData.map((item, index) => ({
+                            label: item.rule_name,
+                            data: [item.pass_percentage],
+                            backgroundColor: getColorForPercentage(item.pass_percentage),
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                            borderWidth: 1
+                        }))
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: '#ffffff',
+                                    font: {
+                                        size: 10
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const dataIndex = context.dataIndex;
+                                        const datasetIndex = context.datasetIndex;
+                                        const item = heatmapData[datasetIndex];
+                                        return [
+                                            `Rule: ${item.rule_name}`,
+                                            `Pass Rate: ${item.pass_percentage}%`,
+                                            `Passed: ${item.passed_count}`,
+                                            `Failed: ${item.failed_count}`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: true,
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    color: '#ffffff',
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            y: {
+                                stacked: true,
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Show the chart
+                heatmapCtx.style.display = 'block';
+                const loadingElement = document.getElementById('heatmap-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            } else {
+                // Display empty message when there's no data
+                console.log('No initial heatmap data available, showing empty message');
+                const emptyElement = document.getElementById('heatmap-empty');
+                if (emptyElement) {
+                    emptyElement.style.display = 'block';
+                }
+                heatmapCtx.style.display = 'none';
+                const loadingElement = document.getElementById('heatmap-loading');
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error initializing heatmap chart:', error);
+        const errorElement = document.getElementById('heatmap-error');
+        if (errorElement) {
+            errorElement.style.display = 'block';
+        }
+        const heatmapCtx = document.getElementById('datasetHeatmap');
+        if (heatmapCtx) {
+            heatmapCtx.style.display = 'none';
+        }
+        const loadingElement = document.getElementById('heatmap-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+}
+
+// Helper function to get color based on percentage (green to red gradient)
+function getColorForPercentage(percentage) {
+    // Normalize percentage to 0-1 range
+    const normalized = Math.min(1, Math.max(0, percentage / 100));
+    
+    // Calculate RGB values for gradient from red (0%) to yellow (50%) to green (100%)
+    let r, g, b;
+    
+    if (normalized < 0.5) {
+        // Red to Yellow (0% to 50%)
+        r = 255;
+        g = Math.round(255 * (normalized * 2));
+        b = 0;
+    } else {
+        // Yellow to Green (50% to 100%)
+        r = Math.round(255 * (1 - (normalized - 0.5) * 2));
+        g = 255;
+        b = 0;
+    }
+    
+    return `rgba(${r}, ${g}, ${b}, 0.7)`;
+}
+
 // Initialize Chart.js defaults
 if (typeof Chart !== 'undefined') {
     Chart.defaults.color = '#ffffff';
@@ -706,4 +908,6 @@ function isDarkBackground(bgColor) {
     return true;
 }
 </script>
+<!-- Hidden element to store heatmap data -->
+<div id="heatmap-data" style="display: none;">{{ dataset.heatmap_data|escapejs }}</div>
 {% endblock %}

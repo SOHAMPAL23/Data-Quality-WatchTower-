@@ -4,24 +4,6 @@
 
 {% block page_title %}Datasets{% endblock %}
 
-{% block extra_css %}
-<style>
-.dataset-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.dataset-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-.sparkline-container {
-    height: 50px;
-    position: relative;
-}
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="row">
     <div class="col-12">
@@ -64,70 +46,65 @@
                     </div>
                 </form>
                 
-                <!-- Dataset Grid with Graphs -->
+                <!-- Dataset Table -->
                 {% if page_obj %}
-                    <div class="row">
-                        {% for item in page_obj %}
-                        {% with dataset=item.dataset %}
-                        <div class="col-md-6 col-lg-4 mb-4">
-                            <div class="card dataset-card h-100">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <h5 class="card-title mb-0">
-                                            <a href="{% url 'datasets:dataset_detail' dataset.pk %}" class="text-decoration-none">
+                    <div class="table-responsive">
+                        <table class="table table-hover" aria-label="Datasets table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Owner</th>
+                                    <th scope="col">Rows</th>
+                                    <th scope="col">Columns</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dataset in page_obj %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'datasets:dataset_detail' dataset.pk %}" aria-label="View details for {{ dataset.name }}">
                                                 {{ dataset.name }}
                                             </a>
-                                        </h5>
-                                        <span class="badge bg-info">{{ dataset.get_source_type_display }}</span>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between small text-muted mb-1">
-                                            <span>Quality Trend</span>
-                                            <span>Last: N/A</span>
-                                        </div>
-                                        <div class="sparkline-container">
-                                            <canvas id="sparkline-{{ dataset.id }}" data-history="{{ item.history }}" height="50"></canvas>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row small text-muted">
-                                        <div class="col-6">
-                                            <div>Rows: {{ dataset.row_count|default:"N/A" }}</div>
-                                            <div>Columns: {{ dataset.column_count|default:"N/A" }}</div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div>Owner: {{ dataset.owner.username }}</div>
-                                            <div>Status: 
-                                                {% if dataset.is_active %}
-                                                    <span class="badge bg-success">Active</span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">Inactive</span>
-                                                {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ dataset.get_source_type_display }}</span>
+                                        </td>
+                                        <td>{{ dataset.owner.username }}</td>
+                                        <td>{{ dataset.row_count }}</td>
+                                        <td>{{ dataset.column_count }}</td>
+                                        <td>
+                                            {% if dataset.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group" aria-label="Dataset actions">
+                                                <a href="{% url 'datasets:dataset_detail' dataset.pk %}" 
+                                                   class="btn btn-sm btn-outline-primary" title="View details">
+                                                    <i class="fas fa-eye" aria-hidden="true"></i>
+                                                    <span class="sr-only">View</span>
+                                                </a>
+                                                <a href="{% url 'datasets:dataset_detail' dataset.pk %}#edit" 
+                                                   class="btn btn-sm btn-outline-warning" title="Edit dataset">
+                                                    <i class="fas fa-edit" aria-hidden="true"></i>
+                                                    <span class="sr-only">Edit</span>
+                                                </a>
+                                                <a href="{% url 'datasets:dataset_delete' dataset.pk %}" 
+                                                   class="btn btn-sm btn-outline-danger" title="Delete dataset">
+                                                    <i class="fas fa-trash" aria-hidden="true"></i>
+                                                    <span class="sr-only">Delete</span>
+                                                </a>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-footer bg-transparent">
-                                    <div class="btn-group w-100" role="group" aria-label="Dataset actions">
-                                        <a href="{% url 'datasets:dataset_detail' dataset.pk %}" 
-                                           class="btn btn-sm btn-outline-primary" title="View details">
-                                            <i class="fas fa-eye" aria-hidden="true"></i>
-                                        </a>
-                                        <a href="{% url 'datasets:dataset_detail' dataset.pk %}#edit" 
-                                           class="btn btn-sm btn-outline-warning" title="Edit dataset">
-                                            <i class="fas fa-edit" aria-hidden="true"></i>
-                                        </a>
-                                        <a href="{% url 'datasets:dataset_delete' dataset.pk %}" 
-                                           class="btn btn-sm btn-outline-danger" title="Delete dataset">
-                                            <i class="fas fa-trash" aria-hidden="true"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endwith %}
-                        {% endfor %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                     
                     <!-- Pagination -->
@@ -150,11 +127,15 @@
                                 {% for num in page_obj.paginator.page_range %}
                                     {% if page_obj.number == num %}
                                         <li class="page-item active" aria-current="page">
-                                            <span class="page-link">{{ num }}</span>
+                                            <span class="page-link">
+                                                {{ num }}
+                                            </span>
                                         </li>
                                     {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                                {{ num }}
+                                            </a>
                                         </li>
                                     {% endif %}
                                 {% endfor %}
@@ -193,69 +174,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Render sparkline charts for each dataset
-    // Get all canvas elements with history data
-    var sparklineElements = document.querySelectorAll('[id^="sparkline-"]');
-    
-    sparklineElements.forEach(function(canvas) {
-        try {
-            var historyData = JSON.parse(canvas.getAttribute('data-history'));
-            var ctx = canvas.getContext('2d');
-            
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Array(historyData.length).fill(''),
-                    datasets: [{
-                        data: historyData,
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            enabled: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            display: false,
-                            min: 0,
-                            max: 100
-                        },
-                        x: {
-                            display: false
-                        }
-                    },
-                    elements: {
-                        line: {
-                            borderWidth: 2
-                        }
-                    }
-                }
-            });
-        } catch (e) {
-            console.error('Error rendering chart for canvas:', canvas.id, e);
-            // Fallback: hide the chart container if there's an error
-            canvas.parentElement.style.display = 'none';
-        }
-    });
-});
-</script>
 {% endblock %}

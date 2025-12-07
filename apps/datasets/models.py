@@ -29,6 +29,8 @@ class Dataset(models.Model):
     # Graph data
     quality_trend_data = models.JSONField(blank=True, null=True, help_text="Quality trend data for charts")
     rule_pass_rates = models.JSONField(blank=True, null=True, help_text="Rule-level pass rates for charts")
+    # Heatmap data
+    heatmap_data = models.JSONField(blank=True, null=True, help_text="Per-dataset heatmap data for visualization")
     
     def __str__(self):
         return self.name

@@ -5,7 +5,6 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.core.serializers.json import DjangoJSONEncoder
 from .models import Dataset
 from .forms import DatasetForm
 from .utils import analyze_dataset_for_rules
@@ -29,34 +28,8 @@ def dataset_list(request):
     if search_query:
         datasets = datasets.filter(name__icontains=search_query)
     
-    # Add quality trend data for each dataset
-    dataset_data = []
-    for dataset in datasets:
-        # Get last 10 runs for this dataset to create quality trend data
-        runs = RuleRun.objects.filter(rule__dataset=dataset).order_by('-started_at')[:10]
-        
-        # Prepare data for sparkline
-        history = []
-        for run in runs:
-            if run.failed_count == 0:
-                history.append(100)
-            else:
-                total = run.total_rows or 1
-                score = max(0, (total - run.failed_count) / total * 100)
-                history.append(round(score))
-        
-        history.reverse()
-        if not history:
-            history = [0] * 10
-            
-        dataset_data.append({
-            'dataset': dataset,
-            'history': json.dumps(history),  # Serialize to JSON string
-            'last_run': runs[0] if runs else None
-        })
-    
     # Pagination
-    paginator = Paginator(dataset_data, 10)
+    paginator = Paginator(datasets, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -225,14 +198,22 @@ def dataset_detail(request, pk):
         quality_metrics = _get_dataset_quality_metrics(dataset)
         quality_trend_data = dataset.quality_trend_data or []
         rule_pass_rates = dataset.rule_pass_rates or []
+        heatmap_data = dataset.heatmap_data or []
         
         response_data = {
             'quality_metrics': quality_metrics,
             'quality_trend_data': quality_trend_data,
-            'rule_pass_rates': rule_pass_rates
+            'rule_pass_rates': rule_pass_rates,
+            'heatmap_data': heatmap_data
         }
         
         return JsonResponse(response_data)
+    
+    # Generate heatmap data if it doesn't exist
+    if not dataset.heatmap_data:
+        _generate_heatmap_data(dataset)
+        # Refresh the dataset object to get the updated heatmap_data
+        dataset.refresh_from_db()
     
     # Get related rules and incidents for display
     rules = Rule.objects.filter(dataset=dataset)
@@ -249,6 +230,41 @@ def dataset_detail(request, pk):
     }
     
     return render(request, 'datasets/detail.html', context)
+
+
+def _generate_heatmap_data(dataset):
+    """
+    Generate heatmap data for a dataset based on rule runs
+    """
+    try:
+        # Get all rules for this dataset
+        rules = Rule.objects.filter(dataset=dataset)
+        
+        # For each rule, get the latest run results
+        heatmap_data = []
+        for rule in rules:
+            latest_run = RuleRun.objects.filter(rule=rule).order_by('-started_at').first()
+            if latest_run:
+                # Calculate pass percentage
+                total_checks = latest_run.passed_count + latest_run.failed_count
+                pass_percentage = (latest_run.passed_count / total_checks * 100) if total_checks > 0 else 0
+                
+                heatmap_data.append({
+                    'rule_name': rule.name,
+                    'column_name': rule.name.split()[0],  # Simplified extraction
+                    'pass_percentage': round(pass_percentage, 2),
+                    'failed_count': latest_run.failed_count,
+                    'passed_count': latest_run.passed_count
+                })
+        
+        # Save heatmap data to dataset
+        dataset.heatmap_data = heatmap_data
+        dataset.save(update_fields=['heatmap_data'])
+        
+        return heatmap_data
+    except Exception as e:
+        logger.error(f"Error generating heatmap data for dataset {dataset.id}: {str(e)}")
+        return []
 
 
 def _get_dataset_quality_metrics(dataset):
